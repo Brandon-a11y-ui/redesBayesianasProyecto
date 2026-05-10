@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redes Bayesianas - Proyecto</title>
+    
+    <!-- Librería Cytoscape.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    
+    <!-- Nuestros estilos -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <h1>Sistema de Redes Bayesianas Interactivo</h1>
+    <p>Materia: Modelos Probabilistas</p>
+
+    <div class="container">
+        <!-- Panel izquierdo: controles -->
+        <div class="panel">
+            <h3>Controles</h3>
+            
+            <div class="control-group">
+                <label>Nombre del nodo:</label>
+                <input type="text" id="nodeName" placeholder="Ej: Robo">
+                <button id="btnAddNode">➕ Agregar Nodo</button>
+            </div>
+
+            <div class="control-group">
+                <label>Conectar nodos:</label>
+                <select id="selectParent"></select>
+                <span>→</span>
+                <select id="selectChild"></select>
+                <button id="btnAddEdge">🔗 Conectar</button>
+            </div>
+
+            <div class="control-group">
+                <label>Variables de evidencia:</label>
+                <div id="evidencePanel"></div>
+            </div>
+
+            <div class="control-group">
+                <label>Variable de consulta:</label>
+                <select id="queryVar"></select>
+                <button id="btnInfer">🔮 Inferir</button>
+            </div>
+
+            <div class="control-group">
+                <label>Resultado:</label>
+                <div id="resultPanel">
+                    <p>Esperando consulta...</p>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="btnClear">🗑️ Limpiar todo</button>
+            </div>
+        </div>
+
+        <!-- Panel derecho: lienzo del grafo -->
+        <div class="canvas">
+            <div id="cy"></div>
+        </div>
+    </div>
+
+    <!-- Nuestros scripts -->
+    <script src="js/graph.js"></script>
+    <script src="js/inference.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
