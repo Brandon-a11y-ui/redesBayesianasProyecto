@@ -105,7 +105,11 @@ function calculateJointProbability(assignment) {
             const valIdx = node.values.indexOf(nodeVal);
             
             // Accedemos a la fila (comboIdx) y a la columna del valor (valIdx)
-            prob = node.cpt[comboIdx][valIdx];
+            if (node.cpt[comboIdx] && node.cpt[comboIdx][valIdx] !== undefined) {
+                prob = node.cpt[comboIdx][valIdx];
+            } else {
+                prob = 0.001; // Valor por defecto si no se encuentra
+            }
         }
         jointProb *= prob;
     }
@@ -125,7 +129,7 @@ function getComboIndex(parents, currentValues) {
             return i;
         }
     }
-    return -1;
+    return 0;
 }
 
 // Funciones auxiliares para obtener el estado actual de la UI

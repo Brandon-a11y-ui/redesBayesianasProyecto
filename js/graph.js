@@ -2,6 +2,7 @@
 let cy = null;
 let nodes = [];
 let edges = [];
+let nextNodeId = 1;
 
 function initGraph() {
     console.log("Iniciando Cytoscape...");
@@ -66,7 +67,7 @@ function addNodeToGraph(name) {
         return null;
     }
     
-    const nodeId = `n${Date.now()}`;
+    const nodeId = `n${nextNodeId++}`;
     
     cy.add({
         group: 'nodes',
@@ -213,12 +214,116 @@ function clearGraph() {
     }
     nodes = [];
     edges = [];
+    nextNodeId = 1;
     updateSelectors();
     document.getElementById('resultPanel').innerHTML = '<p>Grafo limpiado</p>';
 }
 
 function getGraphData() {
     return { nodes: nodes, edges: edges };
+}
+
+// ============================================
+// GUARDAR Y CARGAR RED (RF5)
+// ============================================
+
+function saveNetworkToFile() {
+    if (nodes.length === 0) {
+        alert('No hay nodos para guardar');
+        return;
+    }
+    
+    // Preparar datos para guardar (sin referencias circulares)
+    const networkData = {
+        nodes: nodes.map(n => ({
+            id: n.id,
+            name: n.name,
+            values: n.values,
+            cpt: n.cpt
+        })),
+        edges: edges.map(e => ({
+            source: e.source,
+            target: e.target
+        })),
+        nextNodeId: nextNodeId
+    };
+    
+    const dataStr = JSON.stringify(networkData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `red_bayesiana_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    alert('✅ Red guardada correctamente');
+}
+
+function loadNetworkFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const networkData = JSON.parse(e.target.result);
+            
+            // Limpiar red actual
+            clearGraph();
+            
+            // Restaurar nextNodeId
+            nextNodeId = networkData.nextNodeId || 1;
+            
+            // Restaurar nodos (primero solo los nombres para crear los nodos)
+            for (const nodeData of networkData.nodes) {
+                const nodeId = `n${nodeData.id.replace('n', '')}`;
+                cy.add({
+                    group: 'nodes',
+                    data: { id: nodeId, label: nodeData.name },
+                    position: { x: Math.random() * 500 + 50, y: Math.random() * 300 + 50 }
+                });
+                
+                nodes.push({
+                    id: nodeId,
+                    name: nodeData.name,
+                    values: nodeData.values || ['True', 'False'],
+                    cpt: nodeData.cpt || {}
+                });
+            }
+            
+            // Restaurar conexiones
+            for (const edge of networkData.edges) {
+                // Buscar los nodos por nombre (porque los ids pueden cambiar)
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                const targetNode = nodes.find(n => n.id === edge.target);
+                
+                if (sourceNode && targetNode) {
+                    cy.add({
+                        group: 'edges',
+                        data: { id: `e${sourceNode.id}-${targetNode.id}`, source: sourceNode.id, target: targetNode.id }
+                    });
+                    edges.push({ source: sourceNode.id, target: targetNode.id });
+                }
+            }
+            
+            // Reorganizar layout
+            cy.layout({
+                name: 'breadthfirst',
+                fit: true,
+                padding: 30,
+                directed: true,
+                roots: getRootNodes()
+            }).run();
+            
+            updateSelectors();
+            alert('✅ Red cargada correctamente');
+            
+        } catch (error) {
+            alert('❌ Error al cargar el archivo: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
 }
 
 // ============================================

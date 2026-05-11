@@ -54,6 +54,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // ===== GUARDAR Y CARGAR RED (RF5) =====
+    document.getElementById('btnSaveNetwork').addEventListener('click', () => {
+        saveNetworkToFile();
+    });
+    
+    const fileInput = document.getElementById('fileLoadNetwork');
+    document.getElementById('btnLoadNetwork').addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', (event) => {
+        if (event.target.files.length > 0) {
+            loadNetworkFromFile(event.target.files[0]);
+            fileInput.value = ''; // Reset para poder cargar el mismo archivo otra vez
+        }
+    });
+    
     // ===== Eventos de la ventana modal =====
     const modal = document.getElementById('cptModal');
     const closeButtons = document.querySelectorAll('.close-modal, #btnCancelModal');
