@@ -233,7 +233,6 @@ function saveNetworkToFile() {
         return;
     }
     
-    // Preparar datos para guardar (sin referencias circulares)
     const networkData = {
         nodes: nodes.map(n => ({
             id: n.id,
@@ -269,13 +268,9 @@ function loadNetworkFromFile(file) {
         try {
             const networkData = JSON.parse(e.target.result);
             
-            // Limpiar red actual
             clearGraph();
-            
-            // Restaurar nextNodeId
             nextNodeId = networkData.nextNodeId || 1;
             
-            // Restaurar nodos (primero solo los nombres para crear los nodos)
             for (const nodeData of networkData.nodes) {
                 const nodeId = `n${nodeData.id.replace('n', '')}`;
                 cy.add({
@@ -292,9 +287,7 @@ function loadNetworkFromFile(file) {
                 });
             }
             
-            // Restaurar conexiones
             for (const edge of networkData.edges) {
-                // Buscar los nodos por nombre (porque los ids pueden cambiar)
                 const sourceNode = nodes.find(n => n.id === edge.source);
                 const targetNode = nodes.find(n => n.id === edge.target);
                 
@@ -307,7 +300,6 @@ function loadNetworkFromFile(file) {
                 }
             }
             
-            // Reorganizar layout
             cy.layout({
                 name: 'breadthfirst',
                 fit: true,
@@ -359,20 +351,15 @@ function showCPTModal(nodeId) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
     
-    // Buscar los padres de este nodo
     const parents = edges.filter(e => e.target === nodeId).map(e => {
         const parentNode = nodes.find(n => n.id === e.source);
         return { id: e.source, name: parentNode ? parentNode.name : '?' };
     });
     
-    // Actualizar título
     document.getElementById('modalNodeName').textContent = node.name;
-    
-    // Generar la tabla de CPT
     const modalBody = document.getElementById('modalBody');
     
     if (parents.length === 0) {
-        // Nodo sin padres (probabilidad marginal)
         modalBody.innerHTML = `
             <table class="cpt-table">
                 <thead>
@@ -390,7 +377,6 @@ function showCPTModal(nodeId) {
             <p><small>⚠️ Las probabilidades deben sumar 1.0</small></p>
         `;
     } else {
-        // Nodo con padres (probabilidad condicional)
         const combinations = cartesianProduct(parents.map(() => ['True', 'False']));
         const combinationLabels = combinations.map(combo => 
             parents.map((p, i) => `${p.name}=${combo[i]}`).join(', ')
@@ -421,13 +407,9 @@ function showCPTModal(nodeId) {
             `;
         });
         
-        tableHtml += `</tbody>
-            </table>
-            <p><small>⚠️ Cada fila debe sumar 1.0</small></p>
-        `;
+        tableHtml += `</tbody></table><p><small>⚠️ Cada fila debe sumar 1.0</small></p>`;
         modalBody.innerHTML = tableHtml;
         
-        // Agregar eventos para calcular sumas en tiempo real
         for (let comboIdx = 0; comboIdx < combinations.length; comboIdx++) {
             for (let valIdx = 0; valIdx < node.values.length; valIdx++) {
                 const input = document.getElementById(`cpt_${nodeId}_${comboIdx}_${valIdx}`);
@@ -438,7 +420,6 @@ function showCPTModal(nodeId) {
         }
     }
     
-    // Cargar valores existentes si ya hay una CPT
     if (node.cpt && Object.keys(node.cpt).length > 0) {
         if (parents.length === 0) {
             for (let idx = 0; idx < node.values.length; idx++) {
@@ -462,12 +443,10 @@ function showCPTModal(nodeId) {
         }
     }
     
-    // Mostrar el modal
     document.getElementById('cptModal').style.display = 'block';
     window.currentCPTNodeId = nodeId;
 }
 
-// Guardar la CPT del nodo actual
 function saveCurrentCPT() {
     const nodeId = window.currentCPTNodeId;
     if (!nodeId) return;
@@ -481,7 +460,6 @@ function saveCurrentCPT() {
     const newCPT = {};
     
     if (parents.length === 0) {
-        // Nodo sin padres
         let rowSum = 0;
         for (let idx = 0; idx < node.values.length; idx++) {
             const val = node.values[idx];
@@ -497,7 +475,6 @@ function saveCurrentCPT() {
             return;
         }
     } else {
-        // Nodo con padres
         for (let comboIdx = 0; comboIdx < combinations.length; comboIdx++) {
             newCPT[comboIdx] = [];
             let rowSum = 0;
@@ -522,7 +499,6 @@ function saveCurrentCPT() {
     closeCPTModal();
 }
 
-// Cerrar ventana modal
 function closeCPTModal() {
     const modal = document.getElementById('cptModal');
     if (modal) {

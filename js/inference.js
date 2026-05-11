@@ -14,7 +14,6 @@ async function runInference() {
         return;
     }
 
-    // Verificar que todos los nodos tengan su CPT definida
     const missingCPTs = nodes.filter(n => !n.cpt || Object.keys(n.cpt).length === 0);
     if (missingCPTs.length > 0) {
         resultPanel.innerHTML = `
@@ -30,17 +29,13 @@ async function runInference() {
         const results = {};
         let alphaSum = 0;
 
-        // Calculamos P(Consulta = valor, Evidencia) para cada estado (True/False)
         for (const queryVal of queryNode.values) {
             const currentAssignment = { ...evidence, [queryVarName]: queryVal };
-            
-            // La sumatoria sobre variables ocultas (DCC)
             const prob = sumOverHiddenVariables(currentAssignment);
             results[queryVal] = prob;
             alphaSum += prob;
         }
 
-        // Mostrar resultados normalizados (Alfa)
         let html = `
             <p><strong>Variable consulta:</strong> ${queryVarName}</p>
             <p><strong>Evidencia:</strong> ${Object.keys(evidence).length > 0 ? Object.entries(evidence).map(([k,v]) => `${k}=${v}`).join(', ') : 'ninguna'}</p>
@@ -63,18 +58,15 @@ async function runInference() {
 }
 
 /**
- * Sumatoria recursiva sobre las variables ocultas (las que no son ni consulta ni evidencia)
+ * Sumatoria recursiva sobre las variables ocultas
  */
 function sumOverHiddenVariables(assignment) {
-    // Buscar la primera variable que no tenga un valor asignado en este escenario
     const nextVar = nodes.find(n => assignment[n.name] === undefined);
 
     if (!nextVar) {
-        // Caso base: Ya tenemos un evento atómico completo. Calculamos el producto de la red.
         return calculateJointProbability(assignment);
     }
 
-    // Caso recursivo: Sumar los resultados de asignar cada valor posible (True/False)
     let sum = 0;
     for (const val of nextVar.values) {
         sum += sumOverHiddenVariables({ ...assignment, [nextVar.name]: val });
@@ -83,7 +75,7 @@ function sumOverHiddenVariables(assignment) {
 }
 
 /**
- * Calcula el producto de probabilidades condicionales: Π P(Xi | padres(Xi))
+ * Calcula el producto de probabilidades condicionales
  */
 function calculateJointProbability(assignment) {
     let jointProb = 1;
@@ -96,19 +88,16 @@ function calculateJointProbability(assignment) {
         let prob = 0;
 
         if (parents.length === 0) {
-            // Nodo raíz: P(Nodo)
             prob = node.cpt[nodeVal];
         } else {
-            // Nodo con padres: P(Nodo | Padres)
             const parentValues = parents.map(p => assignment[p.name]);
             const comboIdx = getComboIndex(parents, parentValues);
             const valIdx = node.values.indexOf(nodeVal);
             
-            // Accedemos a la fila (comboIdx) y a la columna del valor (valIdx)
             if (node.cpt[comboIdx] && node.cpt[comboIdx][valIdx] !== undefined) {
                 prob = node.cpt[comboIdx][valIdx];
             } else {
-                prob = 0.001; // Valor por defecto si no se encuentra
+                prob = 0.001;
             }
         }
         jointProb *= prob;
@@ -117,14 +106,12 @@ function calculateJointProbability(assignment) {
 }
 
 /**
- * Busca el índice de la combinación de padres que coincide con los valores actuales
+ * Busca el índice de la combinación de padres
  */
 function getComboIndex(parents, currentValues) {
-    // Generamos las mismas combinaciones que genera el modal en graph.js
     const combinations = cartesianProduct(parents.map(() => ['True', 'False']));
     
     for (let i = 0; i < combinations.length; i++) {
-        // Si todos los valores de la combinación coinciden con los del escenario actual
         if (combinations[i].every((val, idx) => val === currentValues[idx])) {
             return i;
         }
@@ -132,7 +119,125 @@ function getComboIndex(parents, currentValues) {
     return 0;
 }
 
-// Funciones auxiliares para obtener el estado actual de la UI
+// ============================================
+// RF10: Mostrar pasos intermedios de eliminación
+// ============================================
+
+function showInferenceSteps() {
+    const queryVarName = getCurrentQuery();
+    const evidence = getCurrentEvidence();
+    const resultPanel = document.getElementById('resultPanel');
+    
+    if (!queryVarName) {
+        resultPanel.innerHTML = '<p>❌ Selecciona una variable de consulta</p>';
+        return;
+    }
+    
+    const missingCPTs = nodes.filter(n => !n.cpt || Object.keys(n.cpt).length === 0);
+    if (missingCPTs.length > 0) {
+        resultPanel.innerHTML = `<p>⚠️ Faltan CPTs para: ${missingCPTs.map(n => n.name).join(', ')}</p>`;
+        return;
+    }
+    
+    let stepsHtml = `<h3>📋 Pasos de inferencia (Eliminación de Variables)</h3>`;
+    stepsHtml += `<p><strong>Consulta:</strong> ${queryVarName}</p>`;
+    stepsHtml += `<p><strong>Evidencia:</strong> ${Object.keys(evidence).length > 0 ? Object.entries(evidence).map(([k,v]) => `${k}=${v}`).join(', ') : 'ninguna'}</p><hr>`;
+    
+    // Paso 1: Factores iniciales
+    stepsHtml += `<h4>🔹 Paso 1: Factores iniciales (CPTs)</h4><ul>`;
+    for (const node of nodes) {
+        const parents = edges.filter(e => e.target === node.id).map(e => {
+            const p = nodes.find(n => n.id === e.source);
+            return p ? p.name : null;
+        }).filter(p => p);
+        
+        if (parents.length === 0) {
+            stepsHtml += `<li><strong>${node.name}</strong>: P(${node.name}) = {`;
+            for (const val of node.values) {
+                stepsHtml += `${val}: ${node.cpt[val] || 0}, `;
+            }
+            stepsHtml += `}</li>`;
+        } else {
+            stepsHtml += `<li><strong>${node.name}</strong>: P(${node.name} | ${parents.join(', ')})<br>`;
+            const combinations = cartesianProduct(parents.map(() => ['True', 'False']));
+            stepsHtml += `<table style="margin-left:20px; border-collapse:collapse; font-size:12px; border:1px solid #ccc;">`;
+            stepsHtml += `<tr><th>${parents.join(', ')}</th><th>P(True)</th><th>P(False)</th></tr>`;
+            for (let i = 0; i < combinations.length; i++) {
+                const combo = combinations[i];
+                const comboLabel = combo.join(',');
+                stepsHtml += `<tr><td style="border:1px solid #ccc; padding:4px;">${comboLabel}</td>`;
+                for (let j = 0; j < node.values.length; j++) {
+                    const prob = node.cpt[i] ? node.cpt[i][j] : 0;
+                    stepsHtml += `<td style="border:1px solid #ccc; padding:4px;">${prob}</td>`;
+                }
+                stepsHtml += `</tr>`;
+            }
+            stepsHtml += `</table></li>`;
+        }
+    }
+    stepsHtml += `</ul><hr>`;
+    
+    // Paso 2: Aplicar evidencia
+    stepsHtml += `<h4>🔹 Paso 2: Aplicar evidencia</h4><ul>`;
+    for (const [varName, varValue] of Object.entries(evidence)) {
+        stepsHtml += `<li>${varName} = ${varValue} → se filtran las filas que no coinciden</li>`;
+    }
+    stepsHtml += `</ul><hr>`;
+    
+    // Paso 3: Variables a eliminar
+    const evidenceVars = new Set(Object.keys(evidence));
+    const varsToEliminate = nodes.filter(n => n.name !== queryVarName && !evidenceVars.has(n.name)).map(n => n.name);
+    
+    stepsHtml += `<h4>🔹 Paso 3: Identificar variables a eliminar</h4>`;
+    stepsHtml += `<p>Variables ocultas (ni consulta ni evidencia): <strong>${varsToEliminate.join(', ') || 'ninguna'}</strong></p><hr>`;
+    
+    // Paso 4: Proceso de eliminación
+    stepsHtml += `<h4>🔹 Paso 4: Eliminación de variables</h4>`;
+    stepsHtml += `<p><em>El algoritmo multiplica factores que comparten variables y luego marginaliza (suma) sobre la variable eliminada.</em></p><ul>`;
+    
+    let remainingVars = [...nodes.map(n => n.name)];
+    for (const varToElim of varsToEliminate) {
+        stepsHtml += `<li><strong>Eliminando ${varToElim}:</strong><ul>`;
+        stepsHtml += `<li>Se multiplican los factores que contienen a ${varToElim}</li>`;
+        stepsHtml += `<li>Se suman (marginalizan) los valores de ${varToElim}</li>`;
+        stepsHtml += `<li>Resultado: nuevo factor sin ${varToElim}</li></ul></li>`;
+        remainingVars = remainingVars.filter(v => v !== varToElim);
+    }
+    stepsHtml += `</ul><hr>`;
+    
+    // Paso 5: Factor final
+    stepsHtml += `<h4>🔹 Paso 5: Factor final</h4>`;
+    stepsHtml += `<p>Variables restantes: <strong>${remainingVars.join(', ')}</strong></p>`;
+    stepsHtml += `<p>Se multiplican los factores restantes y se normaliza para obtener P(${queryVarName} | evidencia).</p><hr>`;
+    
+    // Paso 6: Resultado real
+    try {
+        const queryNode = nodes.find(n => n.name === queryVarName);
+        const results = {};
+        let alphaSum = 0;
+        
+        for (const queryVal of queryNode.values) {
+            const currentAssignment = { ...evidence, [queryVarName]: queryVal };
+            const prob = sumOverHiddenVariables(currentAssignment);
+            results[queryVal] = prob;
+            alphaSum += prob;
+        }
+        
+        stepsHtml += `<h4>🔹 Resultado final (normalizado)</h4><ul>`;
+        for (const val in results) {
+            const normalizedProb = results[val] / alphaSum;
+            stepsHtml += `<li>P(${queryVarName}=${val}) = ${normalizedProb.toFixed(4)} (${(normalizedProb * 100).toFixed(2)}%)</li>`;
+        }
+        stepsHtml += `</ul>`;
+        
+    } catch (error) {
+        stepsHtml += `<p>❌ Error al calcular resultado: ${error.message}</p>`;
+    }
+    
+    resultPanel.innerHTML = stepsHtml;
+}
+
+// Funciones auxiliares
 function getCurrentEvidence() {
     const evidence = {};
     nodes.forEach(node => {

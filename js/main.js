@@ -54,11 +54,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // ===== GUARDAR Y CARGAR RED (RF5) =====
+    // Guardar red
     document.getElementById('btnSaveNetwork').addEventListener('click', () => {
         saveNetworkToFile();
     });
     
+    // Cargar red
     const fileInput = document.getElementById('fileLoadNetwork');
     document.getElementById('btnLoadNetwork').addEventListener('click', () => {
         fileInput.click();
@@ -67,11 +68,16 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (event) => {
         if (event.target.files.length > 0) {
             loadNetworkFromFile(event.target.files[0]);
-            fileInput.value = ''; // Reset para poder cargar el mismo archivo otra vez
+            fileInput.value = '';
         }
     });
     
-    // ===== Eventos de la ventana modal =====
+    // RF10: Mostrar pasos de inferencia
+    document.getElementById('btnShowSteps').addEventListener('click', () => {
+        showInferenceSteps();
+    });
+    
+    // Eventos de la ventana modal
     const modal = document.getElementById('cptModal');
     const closeButtons = document.querySelectorAll('.close-modal, #btnCancelModal');
     
@@ -81,14 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Cerrar modal haciendo clic fuera del contenido
     window.addEventListener('click', (event) => {
         if (event.target === modal) {
             closeCPTModal();
         }
     });
     
-    // Guardar CPT
     const saveBtn = document.getElementById('btnSaveCPT');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveCurrentCPT);
