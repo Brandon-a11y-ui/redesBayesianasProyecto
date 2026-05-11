@@ -1,0 +1,109 @@
+{
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "robo",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "True": 0.001,
+        "False": 0.999
+      }
+    },
+    {
+      "id": "n2",
+      "name": "terremoto",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "True": 0.002,
+        "False": 0.998
+      }
+    },
+    {
+      "id": "n3",
+      "name": "alarma",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "0": [
+          0.95,
+          0.05
+        ],
+        "1": [
+          0.94,
+          0.06
+        ],
+        "2": [
+          0.29,
+          0.71
+        ],
+        "3": [
+          0.001,
+          0.999
+        ]
+      }
+    },
+    {
+      "id": "n4",
+      "name": "juan",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "0": [
+          0.9,
+          0.1
+        ],
+        "1": [
+          0.05,
+          0.95
+        ]
+      }
+    },
+    {
+      "id": "n5",
+      "name": "maria",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "0": [
+          0.7,
+          0.3
+        ],
+        "1": [
+          0.01,
+          0.99
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "n1",
+      "target": "n3"
+    },
+    {
+      "source": "n2",
+      "target": "n3"
+    },
+    {
+      "source": "n3",
+      "target": "n4"
+    },
+    {
+      "source": "n3",
+      "target": "n5"
+    }
+  ],
+  "nextNodeId": 6
+}

@@ -1,0 +1,111 @@
+{
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "deporte(D)",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "True": 0.1,
+        "False": 0.9
+      }
+    },
+    {
+      "id": "n2",
+      "name": "alimentacion(A)",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "True": 0.4,
+        "False": 0.6
+      }
+    },
+    {
+      "id": "n3",
+      "name": "fumador(F)",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "True": 0.4,
+        "False": 0.6
+      }
+    },
+    {
+      "id": "n4",
+      "name": "presion (S)",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "0": [
+          0.01,
+          0.99
+        ],
+        "1": [
+          0.2,
+          0.8
+        ],
+        "2": [
+          0.25,
+          0.75
+        ],
+        "3": [
+          0.7,
+          0.3
+        ]
+      }
+    },
+    {
+      "id": "n5",
+      "name": "infarto(I)",
+      "values": [
+        "True",
+        "False"
+      ],
+      "cpt": {
+        "0": [
+          0.8,
+          0.2
+        ],
+        "1": [
+          0.7,
+          0.3
+        ],
+        "2": [
+          0.6,
+          0.4
+        ],
+        "3": [
+          0.3,
+          0.7
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "n1",
+      "target": "n4"
+    },
+    {
+      "source": "n2",
+      "target": "n4"
+    },
+    {
+      "source": "n4",
+      "target": "n5"
+    },
+    {
+      "source": "n3",
+      "target": "n5"
+    }
+  ],
+  "nextNodeId": 6
+}
