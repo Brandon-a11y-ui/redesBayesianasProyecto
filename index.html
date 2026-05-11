@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redes Bayesianas - Proyecto</title>
     
-    <!-- Librería Cytoscape.js -->
+    <!--Libreria Cytoscape.js para dibujar grafos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
     
-    <!-- Nuestros estilos -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -16,35 +15,40 @@
     <p>Materia: Modelos Probabilistas</p>
 
     <div class="container">
-        <!-- Panel izquierdo: controles -->
+        <!--panel izquierdo con todos los controles -->
         <div class="panel">
             <h3>Controles</h3>
             
+            <!--Seccion para agregar nuevos nodos -->
             <div class="control-group">
                 <label>Nombre del nodo:</label>
                 <input type="text" id="nodeName" placeholder="Ej: Robo">
-                <button id="btnAddNode">➕ Agregar Nodo</button>
+                <button id="btnAddNode">Agregar Nodo</button>
             </div>
 
+            <!-- seccion para conectar nodos existentes -->
             <div class="control-group">
                 <label>Conectar nodos:</label>
                 <select id="selectParent"></select>
                 <span>→</span>
                 <select id="selectChild"></select>
-                <button id="btnAddEdge">🔗 Conectar</button>
+                <button id="btnAddEdge">Conectar</button>
             </div>
 
+            <!-- Seccion para establecer variables de evidencia -->
             <div class="control-group">
                 <label>Variables de evidencia:</label>
                 <div id="evidencePanel"></div>
             </div>
 
+            <!--Seccion para seleccionar variable de consulta -->
             <div class="control-group">
                 <label>Variable de consulta:</label>
                 <select id="queryVar"></select>
-                <button id="btnInfer">🔮 Inferir</button>
+                <button id="btnInfer">Inferir</button>
             </div>
 
+            <!-- Panel donde se muestran los resultados -->
             <div class="control-group">
                 <label>Resultado:</label>
                 <div id="resultPanel">
@@ -52,28 +56,31 @@
                 </div>
             </div>
 
+            <!-- botones para guardar y cargar la red en archivo -->
             <div class="control-group">
-                <button id="btnSaveNetwork">💾 Guardar red</button>
+                <button id="btnSaveNetwork">Guardar red</button>
                 <input type="file" id="fileLoadNetwork" accept=".json" style="display:none;">
-                <button id="btnLoadNetwork">📂 Cargar red</button>
+                <button id="btnLoadNetwork">Cargar red</button>
             </div>
 
+            <!-- bton para visualizar los pasos del algoritmo -->
             <div class="control-group">
-                <button id="btnShowSteps">📋 Mostrar pasos de inferencia</button>
+                <button id="btnShowSteps">Mostrar pasos de inferencia</button>
             </div>
 
+            <!-- Boton para limpiar todo el gafo -->
             <div class="control-group">
-                <button id="btnClear">🗑️ Limpiar todo</button>
+                <button id="btnClear">Limpiar todo</button>
             </div>
         </div>
 
-        <!-- Panel derecho: lienzo del grafo -->
+        <!-- Panel derecho donde se dibuja el grafo -->
         <div class="canvas">
             <div id="cy"></div>
         </div>
     </div>
 
-    <!-- Ventana modal para definir CPTs -->
+    <!-- Ventana modal para definir las tablas de probabilidad condicional-->
     <div id="cptModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -81,16 +88,16 @@
                 <span class="close-modal">&times;</span>
             </div>
             <div id="modalBody">
-                <!-- Aquí se generará dinámicamente la tabla -->
+                <!-- Aqui se genera dinamicamente la tabla de probabilidades -->
             </div>
             <div class="modal-buttons">
-                <button id="btnSaveCPT" class="btn-save">💾 Guardar CPT</button>
-                <button id="btnCancelModal" class="btn-cancel">❌ Cancelar</button>
+                <button id="btnSaveCPT" class="btn-save">Guardar CPT</button>
+                <button id="btnCancelModal" class="btn-cancel">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- Nuestros scripts -->
+    <!-- Scripts de la aplicacion -->
     <script src="js/graph.js"></script>
     <script src="js/inference.js"></script>
     <script src="js/main.js"></script>

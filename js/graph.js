@@ -1,9 +1,10 @@
-// graph.js - Manejo del grafo con layout automático y CPTs
+// graph.js : Manejo del grafo y definicion de CPTs
 let cy = null;
 let nodes = [];
 let edges = [];
 let nextNodeId = 1;
 
+// Inicializa el grafo con Cytoscape
 function initGraph() {
     console.log("Iniciando Cytoscape...");
     
@@ -51,7 +52,7 @@ function initGraph() {
         }
     });
     
-    // Evento al hacer doble clic en un nodo (para definir CPT)
+    // Doble clic en un nodo abre la ventana para definir su CPT
     cy.on('dbltap', 'node', (evt) => {
         const node = evt.target;
         const nodeId = node.data('id');
@@ -61,6 +62,7 @@ function initGraph() {
     console.log("Cytoscape iniciado correctamente");
 }
 
+// Agrega un nuevo nodo al grafo
 function addNodeToGraph(name) {
     if (!cy) {
         console.error("Cytoscape no está inicializado");
@@ -82,7 +84,7 @@ function addNodeToGraph(name) {
         cpt: {}
     });
     
-    // Aplicar layout para reorganizar automáticamente
+    // Reorganiza el grafo automaticamente
     cy.layout({
         name: 'breadthfirst',
         fit: true,
@@ -96,14 +98,14 @@ function addNodeToGraph(name) {
     return nodeId;
 }
 
-// Obtener nodos que no tienen padres (raíces)
+// Obtiene los nodos que no tienen padres (raices)
 function getRootNodes() {
     const childNodes = new Set(edges.map(e => e.target));
     const rootIds = nodes.filter(n => !childNodes.has(n.id)).map(n => n.id);
     return rootIds;
 }
 
-// Verificar si agregar una arista crearía un ciclo
+// Verifica si agregar una arista crearia un ciclo (BFS)
 function wouldCreateCycle(parentId, childId) {
     const visited = new Set();
     const queue = [childId];
@@ -121,6 +123,7 @@ function wouldCreateCycle(parentId, childId) {
     return false;
 }
 
+// Conecta dos nodos con una arista dirigida
 function addEdgeToGraph(parentId, childId) {
     if (!cy) return false;
     
@@ -142,6 +145,7 @@ function addEdgeToGraph(parentId, childId) {
     
     edges.push({ source: parentId, target: childId });
     
+    // Reorganiza el grafo despues de agregar la conexion
     cy.layout({
         name: 'breadthfirst',
         fit: true,
@@ -154,6 +158,7 @@ function addEdgeToGraph(parentId, childId) {
     return true;
 }
 
+// Actualiza todos los selectores (padre, hijo, consulta, evidencia)
 function updateSelectors() {
     const parentSelect = document.getElementById('selectParent');
     const childSelect = document.getElementById('selectChild');
@@ -208,6 +213,7 @@ function updateSelectors() {
     }
 }
 
+// Limpia todo el grafo
 function clearGraph() {
     if (cy) {
         cy.elements().remove();
@@ -219,14 +225,14 @@ function clearGraph() {
     document.getElementById('resultPanel').innerHTML = '<p>Grafo limpiado</p>';
 }
 
+// Retorna los datos actuales del grafo
 function getGraphData() {
     return { nodes: nodes, edges: edges };
 }
 
-// ============================================
 // GUARDAR Y CARGAR RED (RF5)
-// ============================================
 
+// Guarda la red actual en un archivo .json
 function saveNetworkToFile() {
     if (nodes.length === 0) {
         alert('No hay nodos para guardar');
@@ -259,9 +265,10 @@ function saveNetworkToFile() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    alert('✅ Red guardada correctamente');
+    alert('Red guardada correctamente');
 }
 
+// Carga una red desde un archivo .json
 function loadNetworkFromFile(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -271,6 +278,7 @@ function loadNetworkFromFile(file) {
             clearGraph();
             nextNodeId = networkData.nextNodeId || 1;
             
+            // Restaurar nodos
             for (const nodeData of networkData.nodes) {
                 const nodeId = `n${nodeData.id.replace('n', '')}`;
                 cy.add({
@@ -287,6 +295,7 @@ function loadNetworkFromFile(file) {
                 });
             }
             
+            // Restaurar aristas
             for (const edge of networkData.edges) {
                 const sourceNode = nodes.find(n => n.id === edge.source);
                 const targetNode = nodes.find(n => n.id === edge.target);
@@ -309,20 +318,19 @@ function loadNetworkFromFile(file) {
             }).run();
             
             updateSelectors();
-            alert('✅ Red cargada correctamente');
+            alert('Red cargada correctamente');
             
         } catch (error) {
-            alert('❌ Error al cargar el archivo: ' + error.message);
+            alert('Error al cargar el archivo: ' + error.message);
         }
     };
     reader.readAsText(file);
 }
 
-// ============================================
-// FUNCIONES PARA CPTs
-// ============================================
 
-// Producto cartesiano de arrays
+// DEFINICION DE TABLAS DE PROBABILIDAD (CPT)
+
+// Genera todas las combinaciones posibles de valores
 function cartesianProduct(arrays) {
     if (!arrays || arrays.length === 0) return [[]];
     return arrays.reduce((acc, curr) => {
@@ -330,7 +338,7 @@ function cartesianProduct(arrays) {
     }, [[]]);
 }
 
-// Calcular la suma de una fila y mostrarla
+// Actualiza la suma de una fila en la tabla de CPT
 function updateRowSum(nodeId, comboIdx, numValues) {
     let sum = 0;
     for (let i = 0; i < numValues; i++) {
@@ -342,15 +350,17 @@ function updateRowSum(nodeId, comboIdx, numValues) {
     const sumSpan = document.getElementById(`sum_${nodeId}_${comboIdx}`);
     if (sumSpan) {
         sumSpan.textContent = sum.toFixed(3);
+        // Cambia el color si la suma es 1 (verde) o no (rojo)
         sumSpan.style.color = Math.abs(sum - 1.0) < 0.01 ? '#2e7d32' : '#d32f2f';
     }
 }
 
-// Mostrar ventana modal para definir CPT de un nodo
+// Muestra la ventana modal para definir la CPT de un nodo
 function showCPTModal(nodeId) {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
     
+    // Obtener los padres del nodo actual
     const parents = edges.filter(e => e.target === nodeId).map(e => {
         const parentNode = nodes.find(n => n.id === e.source);
         return { id: e.source, name: parentNode ? parentNode.name : '?' };
@@ -359,6 +369,7 @@ function showCPTModal(nodeId) {
     document.getElementById('modalNodeName').textContent = node.name;
     const modalBody = document.getElementById('modalBody');
     
+    // Caso: nodo sin padres (probabilidad marginal)
     if (parents.length === 0) {
         modalBody.innerHTML = `
             <table class="cpt-table">
@@ -374,9 +385,10 @@ function showCPTModal(nodeId) {
                     `).join('')}
                 </tbody>
             </table>
-            <p><small>⚠️ Las probabilidades deben sumar 1.0</small></p>
+            <p><small>Las probabilidades deben sumar 1.0</small></p>
         `;
     } else {
+        // Caso: nodo con padres (tabla condicional)
         const combinations = cartesianProduct(parents.map(() => ['True', 'False']));
         const combinationLabels = combinations.map(combo => 
             parents.map((p, i) => `${p.name}=${combo[i]}`).join(', ')
@@ -407,9 +419,10 @@ function showCPTModal(nodeId) {
             `;
         });
         
-        tableHtml += `</tbody></table><p><small>⚠️ Cada fila debe sumar 1.0</small></p>`;
+        tableHtml += `</tbody>赶<p><small>Cada fila debe sumar 1.0</small></p>`;
         modalBody.innerHTML = tableHtml;
         
+        // Agregar evento para actualizar la suma en tiempo real
         for (let comboIdx = 0; comboIdx < combinations.length; comboIdx++) {
             for (let valIdx = 0; valIdx < node.values.length; valIdx++) {
                 const input = document.getElementById(`cpt_${nodeId}_${comboIdx}_${valIdx}`);
@@ -420,6 +433,7 @@ function showCPTModal(nodeId) {
         }
     }
     
+    // Cargar valores existentes si ya hay una CPT guardada
     if (node.cpt && Object.keys(node.cpt).length > 0) {
         if (parents.length === 0) {
             for (let idx = 0; idx < node.values.length; idx++) {
@@ -447,6 +461,7 @@ function showCPTModal(nodeId) {
     window.currentCPTNodeId = nodeId;
 }
 
+// Guarda la CPT del nodo actual
 function saveCurrentCPT() {
     const nodeId = window.currentCPTNodeId;
     if (!nodeId) return;
@@ -460,6 +475,7 @@ function saveCurrentCPT() {
     const newCPT = {};
     
     if (parents.length === 0) {
+        // Validar suma de probabilidades marginales
         let rowSum = 0;
         for (let idx = 0; idx < node.values.length; idx++) {
             const val = node.values[idx];
@@ -475,6 +491,7 @@ function saveCurrentCPT() {
             return;
         }
     } else {
+        // Validar cada fila de la tabla condicional (cada fila debe sumar 1)
         for (let comboIdx = 0; comboIdx < combinations.length; comboIdx++) {
             newCPT[comboIdx] = [];
             let rowSum = 0;
@@ -494,11 +511,12 @@ function saveCurrentCPT() {
     }
     
     node.cpt = newCPT;
-    console.log(`✅ CPT guardada para "${node.name}":`, newCPT);
-    alert(`✅ CPT guardada para el nodo "${node.name}"`);
+    console.log(`CPT guardada para "${node.name}":`, newCPT);
+    alert(`CPT guardada para el nodo "${node.name}"`);
     closeCPTModal();
 }
 
+// Cierra la ventana modal
 function closeCPTModal() {
     const modal = document.getElementById('cptModal');
     if (modal) {
