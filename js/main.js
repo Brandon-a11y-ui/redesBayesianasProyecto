@@ -54,5 +54,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // ===== Eventos de la ventana modal =====
+    const modal = document.getElementById('cptModal');
+    const closeButtons = document.querySelectorAll('.close-modal, #btnCancelModal');
+    
+    closeButtons.forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', closeCPTModal);
+        }
+    });
+    
+    // Cerrar modal haciendo clic fuera del contenido
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeCPTModal();
+        }
+    });
+    
+    // Guardar CPT
+    const saveBtn = document.getElementById('btnSaveCPT');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveCurrentCPT);
+    }
+    
     console.log("✅ Sistema listo");
 });

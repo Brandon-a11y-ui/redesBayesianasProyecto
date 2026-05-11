@@ -116,3 +116,130 @@ h3 {
     margin-top: 0;
     color: #1a237e;
 }
+
+/* ===== Ventana Modal para CPTs ===== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    width: 80%;
+    max-width: 800px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #1a237e;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #1a237e;
+}
+
+.close-modal {
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.3s;
+}
+
+.close-modal:hover {
+    color: #d32f2f;
+}
+
+.cpt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.cpt-table th, .cpt-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+.cpt-table th {
+    background-color: #1a237e;
+    color: white;
+    font-weight: bold;
+}
+
+.cpt-table td input {
+    width: 80px;
+    padding: 6px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.cpt-table td input:focus {
+    outline: none;
+    border-color: #1a237e;
+}
+
+.cpt-table .row-label {
+    background-color: #e8eaf6;
+    font-weight: bold;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.modal-buttons button {
+    width: auto;
+    padding: 10px 20px;
+}
+
+.btn-save {
+    background-color: #2e7d32;
+}
+
+.btn-save:hover {
+    background-color: #1b5e20;
+}
+
+.btn-cancel {
+    background-color: #9e9e9e;
+}
+
+.btn-cancel:hover {
+    background-color: #757575;
+}
+
+.sum-indicator {
+    font-weight: bold;
+}
