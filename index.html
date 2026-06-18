@@ -3,93 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redes Bayesianas - Proyecto</title>
+    <title>Sistema Probabilista Interactivo - Redes Bayesianas & HMM</title>
     
-    <!--Libreria Cytoscape.js para dibujar grafos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
     
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <h1>Sistema de Redes Bayesianas Interactivo</h1>
-    <p>Materia: Modelos Probabilistas</p>
+    <h1>Sistema Probabilista Interactivo</h1>
+    <p>Materia: Modelos Probabilistas | UMSNH</p>
+
+    <div class="model-selector-container">
+        <label for="globalModelType"><strong>Selecciona el modelo a resolver:</strong></label>
+        <select id="globalModelType">
+            <option value="bayes">Red Bayesiana</option>
+            <option value="hmm">Modelo Oculto de Markov (HMM)</option>
+        </select>
+    </div>
 
     <div class="container">
-        <!--panel izquierdo con todos los controles -->
         <div class="panel">
             <h3>Controles</h3>
             
-            <!--Seccion para agregar nuevos nodos -->
             <div class="control-group">
-                <label>Nombre del nodo:</label>
-                <input type="text" id="nodeName" placeholder="Ej: Robo">
-                <button id="btnAddNode">Agregar Nodo</button>
+                <label><strong>Ingesta por Texto Plano (.txt):</strong></label>
+                <textarea id="txtIngestion" rows="5" placeholder="Ejemplo Bayes:&#10;nodos: Robo, Alarma&#10;conexiones: Robo->Alarma&#10;&#10;Ejemplo HMM:&#10;estados: Sano, Gripe&#10;observaciones: Fiebre, Tos"></textarea>
+                <button id="btnProcessText">⚡ Procesar Texto</button>
             </div>
 
-            <!-- seccion para conectar nodos existentes -->
-            <div class="control-group">
-                <label>Conectar nodos:</label>
-                <select id="selectParent"></select>
-                <span>→</span>
-                <select id="selectChild"></select>
-                <button id="btnAddEdge">Conectar</button>
-            </div>
+            <div id="panelBayesControls">
+                <div class="control-group">
+                    <label>Nombre del nodo:</label>
+                    <input type="text" id="nodeName" placeholder="Ej: Robo">
+                    <button id="btnAddNode">Agregar Nodo</button>
+                </div>
 
-            <!-- Seccion para establecer variables de evidencia -->
-            <div class="control-group">
-                <label>Variables de evidencia:</label>
-                <div id="evidencePanel"></div>
-            </div>
+                <div class="control-group">
+                    <label>Conectar nodos:</label>
+                    <select id="selectParent"></select>
+                    <span>→</span>
+                    <select id="selectChild"></select>
+                    <button id="btnAddEdge">Conectar</button>
+                </div>
 
-            <!--Seccion para seleccionar variable de consulta -->
-            <div class="control-group">
-                <label>Variable de consulta:</label>
-                <select id="queryVar"></select>
-                <button id="btnInfer">Inferir</button>
-            </div>
-
-            <!-- Panel donde se muestran los resultados -->
-            <div class="control-group">
-                <label>Resultado:</label>
-                <div id="resultPanel">
-                    <p>Esperando consulta...</p>
+                <div class="control-group">
+                    <label>Variables de evidencia:</label>
+                    <div id="evidencePanel"></div>
                 </div>
             </div>
 
-            <!-- botones para guardar y cargar la red en archivo -->
-            <div class="control-group">
-                <button id="btnSaveNetwork">Guardar red</button>
-                <input type="file" id="fileLoadNetwork" accept=".json" style="display:none;">
-                <button id="btnLoadNetwork">Cargar red</button>
+            <div id="panelHMMControls" style="display: none;">
+                <div class="control-group">
+                    <label><strong>Parámetros del HMM:</strong></label>
+                    <button id="btnOpenHMMMatrices" class="btn-accent">📊 Definir Matrices (A, B, π)</button>
+                </div>
+                <div class="control-group">
+                    <label>Secuencia de observaciones (separadas por comas):</label>
+                    <input type="text" id="hmmObservations" placeholder="Ej: Fiebre, Tos, Fiebre">
+                </div>
             </div>
 
-            <!-- bton para visualizar los pasos del algoritmo -->
             <div class="control-group">
+                <label><strong>Algoritmo de Solución:</strong></label>
+                <select id="selectAlgorithm">
+                    </select>
+            </div>
+
+            <div class="control-group" id="bayesQuerySection">
+                <label>Variable de consulta:</label>
+                <select id="queryVar"></select>
+            </div>
+
+            <div class="control-group">
+                <button id="btnExecute" class="btn-execute">🔮 Resolver Modelo</button>
+            </div>
+
+            <div class="control-group">
+                <label>Resultado:</label>
+                <div id="resultPanel">
+                    <p>Esperando consulta o secuencia...</p>
+                </div>
+                <button id="btnExportResults" style="display: none; margin-top: 10px;">💾 Guardar Resultados (.txt)</button>
+            </div>
+
+            <div class="control-group">
+                <label><strong>Exportar Grafo como Imagen:</strong></label>
+                <div class="btn-row">
+                    <button id="btnSavePNG">🖼️ PNG</button>
+                    <button id="btnSaveJPG">🖼️ JPG</button>
+                </div>
+            </div>
+
+            <div class="control-group dynamic-actions" id="bayesFileActions">
+                <button id="btnSaveNetwork">Guardar red (JSON)</button>
+                <input type="file" id="fileLoadNetwork" accept=".json" style="display:none;">
+                <button id="btnLoadNetwork">Cargar red (JSON)</button>
+            </div>
+
+            <div class="control-group" id="bayesStepsSection">
                 <button id="btnShowSteps">Mostrar pasos de inferencia</button>
             </div>
 
-            <!-- Boton para limpiar todo el gafo -->
             <div class="control-group">
-                <button id="btnClear">Limpiar todo</button>
+                <button id="btnClear" class="btn-danger">🗑️ Limpiar todo</button>
             </div>
         </div>
 
-        <!-- Panel derecho donde se dibuja el grafo -->
         <div class="canvas">
             <div id="cy"></div>
         </div>
     </div>
 
-    <!-- Ventana modal para definir las tablas de probabilidad condicional-->
     <div id="cptModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Definir CPT - <span id="modalNodeName"></span></h3>
                 <span class="close-modal">&times;</span>
             </div>
-            <div id="modalBody">
-                <!-- Aqui se genera dinamicamente la tabla de probabilidades -->
-            </div>
+            <div id="modalBody"></div>
             <div class="modal-buttons">
                 <button id="btnSaveCPT" class="btn-save">Guardar CPT</button>
                 <button id="btnCancelModal" class="btn-cancel">Cancelar</button>
@@ -97,7 +128,21 @@
         </div>
     </div>
 
-    <!-- Scripts de la aplicacion -->
+    <div id="hmmModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>Configuración de Parámetros del HMM (Matrices)</h3>
+                <span class="close-modal" id="closeHMMModal">&times;</span>
+            </div>
+            <div id="hmmModalBody" style="max-height: 420px; overflow-y: auto; padding: 10px;">
+                </div>
+            <div class="modal-buttons">
+                <button id="btnSaveHMM" class="btn-save">Guardar Configuración HMM</button>
+                <button id="btnCancelHMMModal" class="btn-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/graph.js"></script>
     <script src="js/inference.js"></script>
     <script src="js/main.js"></script>

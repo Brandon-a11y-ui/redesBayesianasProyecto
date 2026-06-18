@@ -1,116 +1,291 @@
-/* Estilos generales */
+/* =========================================================================
+   Estilos Generales de la Aplicación
+   ========================================================================= */
 * {
     box-sizing: border-box;
 }
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 20px;
     background: #f0f2f5;
+    color: #333;
 }
+
 h1 {
     color: #1a237e;
     margin-bottom: 5px;
 }
-/*Contenedor principal con dos columnas */
+
+p {
+    margin-top: 0;
+    color: #666;
+}
+
+/* =========================================================================
+   REQUISITO: Selector Global de Tipo de Red (Parte Dos)
+   ========================================================================= */
+.model-selector-container {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.model-selector-container label {
+    font-size: 14px;
+    color: #1a237e;
+}
+
+.model-selector-container select {
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 2px solid #1a237e;
+    color: #1a237e;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #fff;
+}
+
+/* =========================================================================
+   Contenedor Principal y Estructura en Columnas
+   ========================================================================= */
 .container {
     display: flex;
     gap: 20px;
     margin-top: 20px;
-    height: 70vh;
+    height: 75vh; /* Ajustado ligeramente para dar espacio al selector global */
 }
 
-/* panel izquierdo de controles */
+/* Panel izquierdo de controles */
 .panel {
-    width: 300px;
+    width: 320px;
     background: white;
     border-radius: 12px;
     padding: 15px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     overflow-y: auto;
 }
-/* panel derecho del linzo */
+
+.panel h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #1a237e;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+/* Panel derecho del lienzo */
 .canvas {
     flex: 1;
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     padding: 10px;
+    position: relative;
 }
+
 #cy {
     width: 100%;
     height: 100%;
     background: #fafafa;
     border-radius: 8px;
 }
-/*grupo de controles con separador */
+
+/* =========================================================================
+   Componentes de Formulario y Controles
+   ========================================================================= */
 .control-group {
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #f0f0f0;
 }
+
+.control-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
 .control-group label {
     display: block;
-    font-weight: bold;
     margin-bottom: 8px;
-    color: #333;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
 }
-/* Campos de entrada */
-input, select {
+
+.control-group input[type="text"],
+.control-group select {
     width: 100%;
     padding: 8px;
-    margin-bottom: 10px;
     border: 1px solid #ccc;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
+    margin-bottom: 8px;
 }
-/* botones generales */
-button {
+
+/* REQUISITO: Caja de Ingesta Masiva por Texto Plano */
+textarea {
     width: 100%;
     padding: 8px;
-    background: #1a237e;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    resize: vertical;
+    margin-bottom: 8px;
+    background-color: #fafafa;
+}
+
+/* =========================================================================
+   Botones y Variantes
+   ========================================================================= */
+button {
+    width: 100%;
+    padding: 9px;
+    background-color: #3f51b5;
     color: white;
     border: none;
     border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
-    font-size: 14px;
-    transition: background 0.3s;
+    transition: background 0.2s, transform 0.1s;
 }
+
 button:hover {
-    background: #0d1652;
+    background-color: #303f9f;
 }
-/* boton de limpiar en rojo */
-#btnClear {
-    background: #d32f2f;
+
+button:active {
+    transform: scale(0.98);
 }
-#btnClear:hover {
-    background: #9a0000;
+
+/* Fila de botones distribuidos (para exportación de imágenes) */
+.btn-row {
+    display: flex;
+    gap: 10px;
 }
-/*panel de resultados */
+
+.btn-row button {
+    flex: 1;
+    background-color: #2e7d32;
+    color: white;
+}
+
+.btn-row button:hover {
+    background-color: #1b5e20;
+}
+
+/* Botón de acento llamativo (Matriz HMM) */
+.btn-accent {
+    background-color: #ef6c00 !important;
+    color: white;
+    font-weight: bold;
+}
+
+.btn-accent:hover {
+    background-color: #e65100 !important;
+}
+
+/* Botón ejecutor del motor principal */
+.btn-execute {
+    background: #1a237e !important;
+    color: white !important;
+    font-size: 14px;
+    font-weight: bold;
+    width: 100%;
+}
+
+.btn-execute:hover {
+    background: #0d1652 !important;
+}
+
+/* Botón peligroso / Limpiar todo */
+.btn-danger {
+    background-color: #c62828 !important;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #b71c1c !important;
+}
+
+/* Conexión en línea de selectores (Padre → Hijo) */
+.control-group span {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    margin: 2px 0;
+    font-weight: bold;
+    color: #666;
+}
+
+/* =========================================================================
+   Paneles de Evidencia Dinámica y Resultados
+   ========================================================================= */
+#evidencePanel {
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 5px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.evidence-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+.evidence-row select {
+    width: 120px;
+    margin-bottom: 0;
+    padding: 4px;
+}
+
 #resultPanel {
     background: #e8eaf6;
+    border-left: 4px solid #1a237e;
     padding: 10px;
-    border-radius: 8px;
-    font-family: monospace;
-    font-size: 14px;
-    word-wrap: break-word;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    max-height: 200px;
+    overflow-y: auto;
 }
-/* evidencia (etiqueta + select) */
-.evidence-item {
-    display: flex;
-    gap: 5px;
+
+#resultPanel p {
+    margin: 0;
+    color: #283593;
+}
+
+#resultPanel ul {
+    margin: 5px 0 0 0;
+    padding-left: 20px;
+}
+
+.dynamic-actions button {
     margin-bottom: 8px;
-    align-items: center;
+    background-color: #78909c;
 }
-.evidence-item select {
-    flex: 1;
-    margin-bottom: 0;
+
+.dynamic-actions button:hover {
+    background-color: #607d8b;
 }
-h3 {
-    margin-top: 0;
-    color: #1a237e;
-}
-/* Ventana modal para definir CPT */
+
+/* =========================================================================
+   Ventanas Modales (Estructura Base compartida)
+   ========================================================================= */
 .modal {
     display: none;
     position: fixed;
@@ -120,28 +295,25 @@ h3 {
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.5);
+    overflow: auto;
 }
+
 .modal-content {
     background-color: white;
-    margin: 5% auto;
+    margin: 10% auto;
     padding: 20px;
-    width: 80%;
-    max-width: 800px;
     border-radius: 12px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-    animation: slideDown 0.3s ease;
+    width: 90%;
+    max-width: 550px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    animation: modalSlide 0.3s ease-out;
 }
-/* Animacion de entrada del modal */
-@keyframes slideDown {
-    from {
-        transform: translateY(-50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+
+@keyframes modalSlide {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -150,10 +322,12 @@ h3 {
     padding-bottom: 10px;
     margin-bottom: 20px;
 }
+
 .modal-header h3 {
     margin: 0;
     color: #1a237e;
 }
+
 .close-modal {
     font-size: 28px;
     font-weight: bold;
@@ -161,25 +335,62 @@ h3 {
     color: #666;
     transition: color 0.3s;
 }
+
 .close-modal:hover {
     color: #d32f2f;
 }
-/* Tabla de la CPT */
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.modal-buttons button {
+    width: auto;
+    padding: 8px 20px;
+}
+
+.btn-save {
+    background-color: #1a237e;
+}
+
+.btn-save:hover {
+    background-color: #0d1652;
+}
+
+.btn-cancel {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.btn-cancel:hover {
+    background-color: #d5d5d5;
+}
+
+/* =========================================================================
+   Tablas Dinámicas de Probabilidades (CPT Bayes)
+   ========================================================================= */
 .cpt-table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
 }
+
 .cpt-table th, .cpt-table td {
     border: 1px solid #ddd;
     padding: 10px;
     text-align: center;
+    font-size: 12px;
 }
+
 .cpt-table th {
     background-color: #1a237e;
     color: white;
     font-weight: bold;
 }
+
 .cpt-table td input {
     width: 80px;
     padding: 6px;
@@ -187,37 +398,33 @@ h3 {
     border: 1px solid #ccc;
     border-radius: 4px;
 }
-.cpt-table td input:focus {
-    outline: none;
-    border-color: #1a237e;
+
+/* =========================================================================
+   Tablas Dinámicas de Matrices HMM (NUEVO - Parte Dos)
+   ========================================================================= */
+.hmm-matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 20px;
 }
-.cpt-table .row-label {
-    background-color: #e8eaf6;
-    font-weight: bold;
+
+.hmm-matrix-table th, .hmm-matrix-table td {
+    border: 1px solid #ddd;
+    padding: 6px;
+    text-align: center;
 }
-/*botones dentro del modal */
-.modal-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+
+.hmm-matrix-table th {
+    background-color: #ef6c00; /* Color naranja distintivo para identificar HMM */
+    color: white;
+    font-size: 12px;
 }
-.modal-buttons button {
-    width: auto;
-    padding: 10px 20px;
-}
-.btn-save {
-    background-color: #2e7d32;
-}
-.btn-save:hover {
-    background-color: #1b5e20;
-}
-.btn-cancel {
-    background-color: #9e9e9e;
-}
-.btn-cancel:hover {
-    background-color: #757575;
-}
-/* Indicador de suma en cada fila */
-.sum-indicator {
-    font-weight: bold;
+
+.hmm-matrix-table input {
+    width: 65px;
+    padding: 4px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
