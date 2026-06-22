@@ -40,425 +40,498 @@ function initGraph() {
             {
                 selector: 'node.hmm-obs',
                 style: {
-                    'background-color': '#0288d1', // Azul para observaciones HMM
-                    'shape': 'rectangle',
-                    'width': '80px',
-                    'height': '40px'
+                    'background-color': '#ef6c00', // Naranja para observaciones HMM
+                    'shape': 'rectangle'
                 }
             },
             {
                 selector: 'edge',
                 style: {
                     'width': 3,
-                    'line-color': '#9fa8da',
-                    'target-arrow-color': '#9fa8da',
+                    'line-color': '#78909c',
+                    'target-arrow-color': '#78909c',
                     'target-arrow-shape': 'triangle',
-                    'curve-style': 'bezier'
+                    'curve-style': 'bezier',
+                    'control-point-step-size': 40
                 }
             },
             {
-                selector: 'edge.hmm-transition',
+                selector: 'edge.hmm-edge',
                 style: {
-                    'line-color': '#c62828',
-                    'target-arrow-color': '#c62828',
-                    'line-style': 'solid'
-                }
-            },
-            {
-                selector: 'edge.hmm-emission',
-                style: {
-                    'line-color': '#757575',
-                    'target-arrow-color': '#757575',
-                    'line-style': 'dashed'
+                    'line-color': '#455a64',
+                    'target-arrow-color': '#455a64',
+                    'label': 'data(label)',
+                    'font-size': '10px',
+                    'color': '#333',
+                    'text-background-opacity': 0.7,
+                    'text-background-color': '#fff',
+                    'text-background-padding': '3px',
+                    'text-background-shape': 'roundrectangle'
                 }
             }
         ],
         layout: { name: 'grid' }
     });
 
-    // Manejador de doble clic original para las CPTs Bayesianas
-    cy.on('dblclick', 'node', function(evt) {
-        const modelType = document.getElementById('globalModelType').value;
-        if (modelType === 'bayes') {
-            const nodeClicked = evt.target;
+    // Evento de doble clic sobre los nodos del grafo
+    cy.on('dblclick', 'node', (evt) => {
+        const nodeClicked = evt.target;
+        const currentModel = document.getElementById('globalModelType').value;
+
+        if (currentModel === 'bayes') {
             openCPTModal(nodeClicked.id());
+        } else {
+            alert("En el modo HMM, los parámetros globales se configuran colectivamente desde el botón 'Configurar Matrices HMM' en el panel izquierdo.");
         }
     });
 }
 
 // =========================================================================
-// MÉTODOS DE MANIPULACIÓN DEL GRAFO (Redes Bayesianas Nativas)
+// MÉTODOS DE LA INTERFAZ DE USUARIO Y GRAFO (BAYES ORIGINAL)
 // =========================================================================
 function addNodeToGraph(name) {
-    const id = 'n' + Date.now() + Math.floor(Math.random() * 1000);
-    const modelType = document.getElementById('globalModelType').value;
+    const id = 'n' + (nodes.length + 1) + '_' + Date.now();
+    const newNode = {
+        id: id,
+        name: name,
+        parents: [],
+        cpt: {}
+    };
+    
+    initializeCPT(newNode);
+    nodes.push(newNode);
 
-    if (modelType === 'bayes') {
-        const newNode = { id: id, name: name, parents: [], cpt: {} };
-        nodes.push(newNode);
-        cy.add({ data: { id: id, name: name } });
-        initializeCPT(newNode);
-        cy.layout({ name: 'grid' }).run();
-        updateSelectors();
-    } else {
-        nodes.push({ id: id, name: name, isObservation: false });
-    }
-}
+    cy.add({
+        group: 'nodes',
+        data: { id: id, name: name }
+    });
 
-// Conectar arcos bayesianos con validación cíclica
-function addEdgeToGraph(parentId, childId) {
-    if (wouldCreateCycle(parentId, childId)) {
-        alert("Error: No se puede conectar. Rompe la propiedad Acíclica de la Red (DAG).");
-        return;
-    }
-    const childNode = nodes.find(n => n.id === childId);
-    if (childNode && !childNode.parents.includes(parentId)) {
-        childNode.parents.push(parentId);
-        cy.add({ data: { id: parentId + '_' + childId, source: parentId, target: childId } });
-        initializeCPT(childNode);
-        cy.layout({ name: 'bezier' }).run();
-    }
-}
+    cy.layout({
+        name: 'breadthfirst',
+        directed: true,
+        animate: true,
+        animationDuration: 300,
+        fit: true,
+        padding: 40
+    }).run();
 
-function clearGraph() {
-    nodes = [];
-    hmmStates = [];
-    hmmObservations = [];
-    hmmPi = [];
-    hmmA = [];
-    hmmB = [];
-    if (cy) cy.elements().remove();
     updateSelectors();
 }
 
-function wouldCreateCycle(startId, endId) {
-    if (startId === endId) return true;
+function addEdgeToGraph(parentId, childId) {
+    if (parentId === childId) return;
+
+    if (wouldCreateCycle(parentId, childId)) {
+        alert("Error: No se puede añadir la conexión ya que generaría un ciclo. Las Redes Bayesianas son Grafos Acíclicos Dirigidos (DAG).");
+        return;
+    }
+
+    const childNode = nodes.find(n => n.id === childId);
+    if (!childNode) return;
+
+    if (childNode.parents.includes(parentId)) {
+        alert("La conexión ya existe actualmente.");
+        return;
+    }
+
+    childNode.parents.push(parentId);
+    
+    cy.add({
+        group: 'edges',
+        data: { id: parentId + '_' + childId, source: parentId, target: childId }
+    });
+
+    initializeCPT(childNode);
+
+    cy.layout({
+        name: 'breadthfirst',
+        directed: true,
+        animate: true,
+        animationDuration: 300,
+        fit: true,
+        padding: 40
+    }).run();
+
+    updateSelectors();
+}
+
+function wouldCreateCycle(sourceId, targetId) {
     let visited = new Set();
-    let queue = [endId];
+    let queue = [targetId];
+
     while (queue.length > 0) {
         let curr = queue.shift();
-        if (curr === startId) return true;
-        visited.add(curr);
+        if (curr === sourceId) return true;
+
         let currNode = nodes.find(n => n.id === curr);
         if (currNode && currNode.parents) {
-            currNode.parents.forEach(p => {
-                if (!visited.has(p)) queue.push(p);
+            let childrenIds = [];
+            nodes.forEach(n => {
+                if (n.parents.includes(curr)) { childrenIds.push(n.id); }
+            });
+            childrenIds.forEach(c => {
+                if (!visited.has(c)) {
+                    visited.add(c);
+                    queue.push(c);
+                }
             });
         }
     }
     return false;
 }
 
+function initializeCPT(node) {
+    node.cpt = {};
+    const combinations = getParentCombinations(node.parents);
+
+    if (combinations.length === 0) {
+        node.cpt["true"] = 0.5;
+    } else {
+        combinations.forEach(comb => {
+            node.cpt[comb] = 0.5;
+        });
+    }
+}
+
+function getParentCombinations(parentIds) {
+    if (!parentIds || parentIds.length === 0) return [];
+    
+    let results = [[]];
+    for (let i = 0; i < parentIds.length; i++) {
+        let pNode = nodes.find(n => n.id === parentIds[i]);
+        let pName = pNode ? pNode.name : parentIds[i];
+        
+        let newResults = [];
+        results.forEach(res => {
+            newResults.push([...res, `${pName}=True`]);
+            newResults.push([...res, `${pName}=False`]);
+        });
+        results = newResults;
+    }
+    return results.map(res => res.join(', '));
+}
+
 function updateSelectors() {
-    const pSel = document.getElementById('selectParent');
-    const cSel = document.getElementById('selectChild');
-    const qSel = document.getElementById('queryVar');
+    const selParent = document.getElementById('selectParent');
+    const selChild = document.getElementById('selectChild');
+    const queryVar = document.getElementById('queryVar');
     const evPanel = document.getElementById('evidencePanel');
 
-    if (!pSel || !cSel || !qSel) return;
+    if (!selParent) return; 
 
-    pSel.innerHTML = '';
-    cSel.innerHTML = '';
-    qSel.innerHTML = '';
+    selParent.innerHTML = '';
+    selChild.innerHTML = '';
+    queryVar.innerHTML = '<option value="">-- Seleccionar --</option>';
     if (evPanel) evPanel.innerHTML = '';
 
     nodes.forEach(n => {
-        const o1 = document.createElement('option'); o1.value = n.id; o1.textContent = n.name;
-        const o2 = document.createElement('option'); o2.value = n.id; o2.textContent = n.name;
-        const o3 = document.createElement('option'); o3.value = n.id; o3.textContent = n.name;
-        
-        pSel.appendChild(o1);
-        cSel.appendChild(o2);
-        qSel.appendChild(o3);
+        let opt1 = document.createElement('option');
+        opt1.value = n.id; opt1.textContent = n.name;
+        selParent.appendChild(opt1);
+
+        let opt2 = document.createElement('option');
+        opt2.value = n.id; opt2.textContent = n.name;
+        selChild.appendChild(opt2);
+
+        let opt3 = document.createElement('option');
+        opt3.value = n.id; opt3.textContent = n.name;
+        queryVar.appendChild(opt3);
 
         if (evPanel) {
-            const row = document.createElement('div');
-            row.className = 'evidence-row';
-            row.innerHTML = `
+            let div = document.createElement('div');
+            div.className = 'evidence-row';
+            div.innerHTML = `
                 <span>${n.name}:</span>
                 <select id="ev_${n.id}">
-                    <option value="none">Sin evidencia</option>
+                    <option value="none">Sin Evidencia</option>
                     <option value="True">True</option>
                     <option value="False">False</option>
                 </select>
             `;
-            evPanel.appendChild(row);
+            evPanel.appendChild(div);
         }
     });
 }
 
-// =========================================================================
-// GESTIÓN DE TABLAS DE PROBABILIDAD CONDICIONAL (CPT Bayesianas)
-// =========================================================================
-let currentEditingNodeId = null;
-
-function initializeCPT(node) {
-    node.cpt = {};
-    const combinations = getParentCombinations(node.parents);
-    combinations.forEach(comb => {
-        node.cpt[comb] = 0.5;
-    });
+function clearGraph() {
+    if (cy) cy.elements().remove();
+    nodes = [];
+    hmmStates = [];
+    hmmObservations = [];
+    hmmPi = [];
+    hmmA = [];
+    hmmB = [];
+    updateSelectors();
+    document.getElementById('resultPanel').innerHTML = '<p>Esperando consulta o secuencia...</p>';
 }
 
-function getParentCombinations(parentIds) {
-    if (parentIds.length === 0) return [""];
-    let result = [""];
-    parentIds.forEach(pId => {
-        const pNode = nodes.find(n => n.id === pId);
-        let newResult = [];
-        result.forEach(res => {
-            newResult.push((res ? res + "," : "") + pNode.name + "=True");
-            newResult.push((res ? res + "," : "") + pNode.name + "=False");
-        });
-        result = newResult;
-    });
-    return result;
-}
+// =========================================================================
+// VENTANA MODAL PARA EDICIÓN DE CPTS (CON PARSER DE PERMUTACIÓN DE CLAVES)
+// =========================================================================
+let currentModalNodeId = null;
 
 function openCPTModal(nodeId) {
-    currentEditingNodeId = nodeId;
+    currentModalNodeId = nodeId;
     const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
     document.getElementById('modalNodeName').textContent = node.name;
-    
     const body = document.getElementById('modalBody');
     body.innerHTML = '';
 
-    let html = `<table class="cpt-table"><thead><tr>`;
-    node.parents.forEach(pId => {
-        html += `<th>${nodes.find(n => n.id === pId).name}</th>`;
-    });
-    html += `<th>P(${node.name} = True)</th><th>P(${node.name} = False)</th></tr></thead><tbody>`;
-
     const combinations = getParentCombinations(node.parents);
-    combinations.forEach((comb, idx) => {
-        html += `<tr>`;
-        if (comb !== "") {
-            const parts = comb.split(',');
-            parts.forEach(p => { html += `<td>${p.split('=')[1]}</td>`; });
-        }
-        const valTrue = node.cpt[comb] !== undefined ? node.cpt[comb] : 0.5;
-        const valFalse = (1 - valTrue).toFixed(4);
+    let tableHtml = `<table class="cpt-table">`;
 
-        html += `
-            <td><input type="number" step="0.01" min="0" max="1" id="cpt_val_${idx}" value="${valTrue}" onchange="document.getElementById('cpt_lbl_${idx}').innerText = (1 - this.value).toFixed(4)"></td>
-            <td id="cpt_lbl_${idx}">${valFalse}</td>
-        </tr>`;
-    });
-    html += `</tbody></table>`;
-    body.innerHTML = html;
+    if (combinations.length === 0) {
+        // Nodo raíz (Prior sin condiciones)
+        let savedVal = 0.5;
+        if (node.cpt) {
+            if (node.cpt["true"] !== undefined) savedVal = node.cpt["true"];
+            else if (node.cpt["True"] !== undefined) savedVal = node.cpt["True"];
+            else if (node.cpt[""] !== undefined) savedVal = node.cpt[""];
+        }
+        
+        tableHtml += `
+            <thead>
+                <tr><th>Condición</th><th>P(True)</th><th>P(False)</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Prior Probabilidad Base</td>
+                    <td><input type="number" step="0.01" min="0" max="1" id="cpt_base_true" value="${savedVal}" oninput="syncModalInputs('cpt_base_true','cpt_base_false')"></td>
+                    <td><input type="number" id="cpt_base_false" value="${(1 - savedVal).toFixed(4)}" disabled></td>
+                </tr>
+            </tbody>`;
+    } else {
+        // Nodo condicionado
+        tableHtml += `<thead><tr>`;
+        node.parents.forEach(pId => {
+            let pNode = nodes.find(n => n.id === pId);
+            tableHtml += `<th>${pNode ? pNode.name : 'Padre'}</th>`;
+        });
+        tableHtml += `<th>P(True | Padres)</th><th>P(False | Padres)</th></tr></thead><tbody>`;
+
+        combinations.forEach((comb, idx) => {
+            const states = comb.split(', ');
+            tableHtml += `<tr>`;
+            states.forEach(st => {
+                let val = st.split('=')[1];
+                tableHtml += `<td>${val}</td>`;
+            });
+
+            // --- ALGORITMO DE EMPAREJAMIENTO DE LLAVES POR CONTENIDO ---
+            let valTrue = 0.5;
+            
+            if (node.cpt) {
+                let currentPairs = comb.split(',').map(s => s.trim().toLowerCase());
+                
+                let correctKey = Object.keys(node.cpt).find(jsonKey => {
+                    let jsonPairs = jsonKey.split(',').map(s => s.trim().toLowerCase());
+                    if (jsonPairs.length !== currentPairs.length) return false;
+                    return jsonPairs.every(p => currentPairs.includes(p));
+                });
+
+                if (correctKey !== undefined) {
+                    valTrue = node.cpt[correctKey];
+                } else if (node.cpt[comb] !== undefined) {
+                    valTrue = node.cpt[comb];
+                }
+            }
+            
+            const valFalse = (1 - valTrue).toFixed(4);
+
+            tableHtml += `
+                <td><input type="number" step="0.01" min="0" max="1" class="cpt-matrix-input" data-comb="${comb}" id="cpt_input_t_${idx}" value="${valTrue}" oninput="syncModalInputs('cpt_input_t_${idx}','cpt_input_f_${idx}')"></td>
+                <td id="cpt_input_f_${idx}">${valFalse}</td>
+            </tr>`;
+        });
+    }
+
+    tableHtml += `</tbody></table><p><small style="color:#2e7d32; font-weight:bold;">Cada fila debe sumar exactamente 1.0</small></p>`;
+    body.innerHTML = tableHtml;
     document.getElementById('cptModal').style.display = 'block';
+}
+
+function syncModalInputs(trueInputId, falseInputId) {
+    const trueInput = document.getElementById(trueInputId);
+    const falseInput = document.getElementById(falseInputId);
+    if (trueInput && falseInput) {
+        let val = parseFloat(trueInput.value);
+        if (isNaN(val)) val = 0;
+        if (val < 0) { val = 0; trueInput.value = 0; }
+        if (val > 1) { val = 1; trueInput.value = 1; }
+        
+        if(falseInput.tagName === 'INPUT') {
+            falseInput.value = (1 - val).toFixed(4);
+        } else {
+            falseInput.innerText = (1 - val).toFixed(4);
+        }
+    }
 }
 
 function closeCPTModal() {
     document.getElementById('cptModal').style.display = 'none';
-    currentEditingNodeId = null;
+    currentModalNodeId = null;
 }
 
-// Guardar tablas condicionales en RAM
 function saveCurrentCPT() {
-    if (!currentEditingNodeId) return;
-    const node = nodes.find(n => n.id === currentEditingNodeId);
+    if (!currentModalNodeId) return;
+    const node = nodes.find(n => n.id === currentModalNodeId);
+    if (!node) return;
+
     const combinations = getParentCombinations(node.parents);
-    
-    for (let i = 0; i < combinations.length; i++) {
-        const inputVal = parseFloat(document.getElementById(`cpt_val_${i}`).value);
-        if (isNaN(inputVal) || inputVal < 0 || inputVal > 1) {
-            alert("Por favor, introduce valores probabilísticos válidos entre 0.0 y 1.0");
+
+    if (combinations.length === 0) {
+        const baseTrue = parseFloat(document.getElementById('cpt_base_true').value);
+        if (isNaN(baseTrue) || baseTrue < 0 || baseTrue > 1) {
+            alert("Inserta un valor válido de probabilidad entre 0.0 y 1.0");
             return;
         }
-        node.cpt[combinations[i]] = inputVal;
+        node.cpt = { "true": baseTrue, "True": baseTrue, "": baseTrue };
+    } else {
+        let newCpt = {};
+        for (let idx = 0; idx < combinations.length; idx++) {
+            const inputTrue = document.getElementById(`cpt_input_t_${idx}`);
+            const combKey = inputTrue.getAttribute('data-comb');
+            const valTrue = parseFloat(inputTrue.value);
+
+            if (isNaN(valTrue) || valTrue < 0 || valTrue > 1) {
+                alert(`Valor inválido en la fila número ${idx + 1}.`);
+                return;
+            }
+            newCpt[combKey] = valTrue;
+        }
+        node.cpt = newCpt;
     }
+
+    alert(`Tabla CPT guardada exitosamente para el nodo: "${node.name}"`);
     closeCPTModal();
-    alert(`CPT de "${node.name}" guardada con éxito.`);
 }
 
 // =========================================================================
-// REQUISITO 2: MOTOR AUTOMÁTICO DE GRAFOS PARA HMM (NUEVO)
+// INGESTA RÁPIDA POR TEXTO PLANO (.TXT)
 // =========================================================================
-function renderHMMTopology(statesTokens, observationsTokens) {
+function processTxtIngestion(text) {
     clearGraph();
-    hmmStates = statesTokens.map(s => s.trim()).filter(s => s);
-    hmmObservations = observationsTokens.map(o => o.trim()).filter(o => o);
+    const lines = text.split('\n');
+    const modelSelector = document.getElementById('globalModelType');
 
-    const canvasWidth = document.getElementById('cy').clientWidth || 600;
-    const paddingX = 80;
+    let mode = 'bayes';
+    let rawNodes = [];
+    let rawEdges = [];
 
-    // 1. Renderizar la hilera de Estados Ocultos (Fila Superior)
-    const stateSpacing = (canvasWidth - paddingX * 2) / Math.max(1, hmmStates.length - 1);
-    hmmStates.forEach((stateName, index) => {
-        const id = 'state_' + stateName;
-        const posX = paddingX + index * stateSpacing;
-        const posY = 100;
+    lines.forEach(line => {
+        let clean = line.trim();
+        if (!clean || clean.startsWith('#')) return;
 
-        cy.add({
-            group: 'nodes',
-            data: { id: id, name: stateName },
-            position: { x: posX, y: posY },
-            classes: 'hmm-state'
-        });
-        nodes.push({ id: id, name: stateName, isObservation: false });
+        if (clean.toLowerCase().startsWith('nodos:')) {
+            mode = 'bayes';
+            let content = clean.substring(6);
+            rawNodes = content.split(',').map(s => s.trim()).filter(s => s !== '');
+        } else if (clean.toLowerCase().startsWith('conexiones:')) {
+            let content = clean.substring(12);
+            rawEdges = content.split(',').map(s => s.trim()).filter(s => s !== '');
+        } else if (clean.toLowerCase().startsWith('estados:')) {
+            mode = 'hmm';
+            let content = clean.substring(8);
+            hmmStates = content.split(',').map(s => s.trim()).filter(s => s !== '');
+        } else if (clean.toLowerCase().startsWith('observaciones:')) {
+            mode = 'hmm';
+            let content = clean.substring(14);
+            hmmObservations = content.split(',').map(s => s.trim()).filter(s => s !== '');
+        }
     });
 
-    // 2. Renderizar la hilera de Observaciones (Fila Inferior)
-    const obsSpacing = (canvasWidth - paddingX * 2) / Math.max(1, hmmObservations.length - 1);
-    hmmObservations.forEach((obsName, index) => {
-        const id = 'obs_' + obsName;
-        const posX = paddingX + index * obsSpacing;
-        const posY = 280;
+    if (mode === 'bayes') {
+        modelSelector.value = 'bayes';
+        if (rawNodes.length === 0) { alert("No se detectaron declaraciones de nodos válidos."); return; }
+        
+        rawNodes.forEach(name => {
+            const id = 'n_' + name.toLowerCase().replace(/\s+/g, '');
+            const newNode = { id: id, name: name, parents: [], cpt: {} };
+            initializeCPT(newNode);
+            nodes.push(newNode);
+            cy.add({ group: 'nodes', data: { id: id, name: name } });
+        });
 
+        rawEdges.forEach(edgeStr => {
+            let parts = edgeStr.split('->');
+            if (parts.length === 2) {
+                let pName = parts[0].trim();
+                let cName = parts[1].trim();
+                let pNode = nodes.find(n => n.name.toLowerCase() === pName.toLowerCase());
+                let cNode = nodes.find(n => n.name.toLowerCase() === cName.toLowerCase());
+                if (pNode && cNode) {
+                    cNode.parents.push(pNode.id);
+                    cy.add({ group: 'edges', data: { id: pNode.id + '_' + cNode.id, source: pNode.id, target: cNode.id } });
+                    initializeCPT(cNode);
+                }
+            }
+        });
+
+        cy.layout({ name: 'breadthfirst', directed: true, padding: 30 }).run();
+        updateSelectors();
+        alert("Estructura de Red Bayesiana cargada vía Texto Plano.");
+    } else {
+        modelSelector.value = 'hmm';
+        if (hmmStates.length === 0 || hmmObservations.length === 0) {
+            alert("Para HMM se requiere declarar tanto 'estados:' como 'observaciones:'.");
+            return;
+        }
+        renderHMMVisualTopology();
+        alert(`Modelo HMM cargado estructuralmente.`);
+    }
+}
+
+function renderHMMVisualTopology() {
+    if (cy) cy.elements().remove();
+    nodes = [];
+
+    hmmStates.forEach((stateName, idx) => {
+        const nodeId = 'hmm_s_' + idx;
+        nodes.push({ id: nodeId, name: stateName, type: 'state' });
         cy.add({
             group: 'nodes',
-            data: { id: id, name: obsName },
-            position: { x: posX, y: posY },
-            classes: 'hmm-obs'
+            data: { id: nodeId, name: stateName },
+            classes: 'hmm-state',
+            position: { x: 150 + (idx * 160), y: 100 }
         });
-        nodes.push({ id: id, name: obsName, isObservation: true });
     });
 
-    // 3. Crear Arcos de Transición en la Cadena Oculta (Entre todos los estados)
+    hmmObservations.forEach((obsName, idx) => {
+        const nodeId = 'hmm_o_' + idx;
+        nodes.push({ id: nodeId, name: obsName, type: 'observation' });
+        cy.add({
+            group: 'nodes',
+            data: { id: nodeId, name: obsName },
+            classes: 'hmm-obs',
+            position: { x: 150 + (idx * 140), y: 280 }
+        });
+    });
+
     for (let i = 0; i < hmmStates.length; i++) {
-        for (let j = 0; j < hmmStates.length; j++) {
+        let srcId = 'hmm_s_' + i;
+        cy.add({ group: 'edges', data: { id: `trans_self_${i}`, source: srcId, target: srcId, label: 'a(i,i)' }, classes: 'hmm-edge' });
+        if (i < hmmStates.length - 1) {
+            let dstId = 'hmm_s_' + (i + 1);
+            cy.add({ group: 'edges', data: { id: `trans_next_${i}`, source: srcId, target: dstId, label: 'a(i,j)' }, classes: 'hmm-edge' });
+        }
+    }
+
+    for (let i = 0; i < hmmStates.length; i++) {
+        for (let j = 0; j < Math.min(hmmObservations.length, 3); j++) {
             cy.add({
                 group: 'edges',
-                data: {
-                    id: `t_edge_${hmmStates[i]}_${hmmStates[j]}`,
-                    source: 'state_' + hmmStates[i],
-                    target: 'state_' + hmmStates[j]
-                },
-                classes: 'hmm-transition'
+                data: { id: `emis_${i}_${j}`, source: 'hmm_s_' + i, target: 'hmm_o_' + j, label: 'b(i,k)' },
+                classes: 'hmm-edge'
             });
         }
     }
-
-    // 4. Crear Arcos de Emisión (De cada estado hacia todas las observaciones)
-    for (let i = 0; i < hmmStates.length; i++) {
-        for (let j = 0; j < hmmObservations.length; j++) {
-            cy.add({
-                group: 'edges',
-                data: {
-                    id: `e_edge_${hmmStates[i]}_${hmmObservations[j]}`,
-                    source: 'state_' + hmmStates[i],
-                    target: 'obs_' + hmmObservations[j]
-                },
-                classes: 'hmm-emission'
-            });
-        }
-    }
-
-    cy.fit(50);
+    cy.fit();
 }
 
 // =========================================================================
-// CAPTURA INTERACTIVA: Constructor de Formularios de Matrices HMM
-// =========================================================================
-function buildHMMModalTables() {
-    const container = document.getElementById('hmmModalBody');
-    container.innerHTML = '';
-
-    if (hmmStates.length === 0 || hmmObservations.length === 0) return;
-
-    let html = '';
-
-    // A. TABLA 1: Vector de Distribución Inicial Pi (1 x N)
-    html += `<h4>Vector de Distribución Inicial (π)</h4>`;
-    html += `<table class="hmm-matrix-table"><thead><tr>`;
-    hmmStates.forEach(s => { html += `<th>${s}</th>`; });
-    html += `</tr></thead><tbody><tr>`;
-    hmmStates.forEach((s, i) => {
-        const val = hmmPi[i] !== undefined ? hmmPi[i] : (1 / hmmStates.length).toFixed(2);
-        html += `<td><input type="number" step="0.01" min="0" max="1" id="hmm_pi_${i}" value="${val}"></td>`;
-    });
-    html += `</tr></tbody></table><hr>`;
-
-    // B. TABLA 2: Matriz de Transición de Estados A (N x N)
-    html += `<h4>Matriz de Transición de Estados (A) [Fila -> Columna]</h4>`;
-    html += `<table class="hmm-matrix-table"><thead><tr><th>Estado Actual</th>`;
-    hmmStates.forEach(s => { html += `<th>${s}</th>`; });
-    html += `</tr></thead><tbody>`;
-    hmmStates.forEach((sRow, i) => {
-        html += `<tr><td><strong>${sRow}</strong></td>`;
-        hmmStates.forEach((sCol, j) => {
-            let val = (1 / hmmStates.length).toFixed(2);
-            if (hmmA[i] && hmmA[i][j] !== undefined) val = hmmA[i][j];
-            html += `<td><input type="number" step="0.01" min="0" max="1" id="hmm_A_${i}_${j}" value="${val}"></td>`;
-        });
-        html += `</tr>`;
-    });
-    html += `</tbody></table><hr>`;
-
-    // C. TABLA 3: Matriz de Emisión de Observaciones B (N x M)
-    html += `<h4>Matriz de Emisión de Observaciones (B)</h4>`;
-    html += `<table class="hmm-matrix-table"><thead><tr><th>Estado Oculto</th>`;
-    hmmObservations.forEach(o => { html += `<th>${o}</th>`; });
-    html += `</tr></thead><tbody>`;
-    hmmStates.forEach((s, i) => {
-        html += `<tr><td><strong>${s}</strong></td>`;
-        hmmObservations.forEach((o, j) => {
-            let val = (1 / hmmObservations.length).toFixed(2);
-            if (hmmB[i] && hmmB[i][j] !== undefined) val = hmmB[i][j];
-            html += `<td><input type="number" step="0.01" min="0" max="1" id="hmm_B_${i}_${j}" value="${val}"></td>`;
-        });
-        html += `</tr>`;
-    });
-    html += `</tbody></table>`;
-
-    container.innerHTML = html;
-}
-
-function saveHMMParameters() {
-    hmmPi = [];
-    hmmA = [];
-    hmmB = [];
-
-    const N = hmmStates.length;
-    const M = hmmObservations.length;
-
-    // 1. Guardar Pi
-    let sumPi = 0;
-    for (let i = 0; i < N; i++) {
-        const val = parseFloat(document.getElementById(`hmm_pi_${i}`).value);
-        hmmPi.push(val);
-        sumPi += val;
-    }
-    if (Math.abs(sumPi - 1.0) > 0.05) {
-        alert("Advertencia: Los componentes del vector inicial π deben sumar aproximadamente 1.0");
-    }
-
-    // 2. Guardar Matriz A
-    for (let i = 0; i < N; i++) {
-        let row = [];
-        let sumRow = 0;
-        for (let j = 0; j < N; j++) {
-            const val = parseFloat(document.getElementById(`hmm_A_${i}_${j}`).value);
-            row.push(val);
-            sumRow += val;
-        }
-        hmmA.push(row);
-        if (Math.abs(sumRow - 1.0) > 0.05) {
-            alert(`Advertencia: La fila del estado "${hmmStates[i]}" en la Matriz A debe sumar aproximadamente 1.0`);
-        }
-    }
-
-    // 3. Guardar Matriz B
-    for (let i = 0; i < N; i++) {
-        let row = [];
-        let sumRow = 0;
-        for (let j = 0; j < M; j++) {
-            const val = parseFloat(document.getElementById(`hmm_B_${i}_${j}`).value);
-            row.push(val);
-            sumRow += val;
-        }
-        hmmB.push(row);
-        if (Math.abs(sumRow - 1.0) > 0.05) {
-            alert(`Advertencia: La fila del estado "${hmmStates[i]}" en la Matriz de Emisión B debe sumar aproximadamente 1.0`);
-        }
-    }
-
-    alert("📊 Parámetros del HMM almacenados correctamente en memoria y listos para inferencia.");
-}
-
-// =========================================================================
-// MÉTODOS DE PERSISTENCIA ORIGINALES (JSON)
+// MÉTODOS DE PERSISTENCIA (CON TU IMPLEMENTACIÓN ESTRICTA DE CARGA)
 // =========================================================================
 function saveNetwork() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(nodes));
@@ -474,26 +547,97 @@ function loadNetworkFromFile(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const uploadedNodes = JSON.parse(e.target.result);
+            const parsedData = JSON.parse(e.target.result);
+            
+            const uploadedNodes = parsedData.nodes ? parsedData.nodes : parsedData;
+            
+            if (!Array.isArray(uploadedNodes)) {
+                throw new Error("El formato del JSON no contiene un arreglo de nodos válido.");
+            }
+
             clearGraph();
-            nodes = uploadedNodes;
-            
-            nodes.forEach(n => {
-                cy.add({ data: { id: n.id, name: n.name } });
-            });
-            
-            nodes.forEach(n => {
-                n.parents.forEach(pId => {
-                    cy.add({ data: { id: pId + '_' + n.id, source: pId, target: n.id } });
+            nodes = []; 
+
+            uploadedNodes.forEach(n => {
+                let cleanParents = [];
+                if (n.parents && Array.isArray(n.parents)) {
+                    cleanParents = n.parents.map(p => typeof p === 'object' ? String(p.id || p.parentId) : String(p));
+                }
+
+                nodes.push({
+                    id: String(n.id),         
+                    name: String(n.name),
+                    parents: cleanParents,
+                    cpt: n.cpt || {}          
                 });
             });
             
-            cy.layout({ name: 'bezier' }).run();
-            updateSelectors();
-            alert("Red cargada con éxito desde archivo JSON.");
+            nodes.forEach(n => {
+                cy.add({ 
+                    group: 'nodes',
+                    data: { id: n.id, name: n.name }
+                });
+            });
+            
+            nodes.forEach(n => {
+                if (n.parents && n.parents.length > 0) {
+                    n.parents.forEach(pId => {
+                        if (cy.getElementById(pId).length > 0) {
+                            const edgeId = pId + '_' + n.id;
+                            if (cy.getElementById(edgeId).length === 0) {
+                                cy.add({ 
+                                    group: 'edges',
+                                    data: { 
+                                        id: edgeId, 
+                                        source: pId, 
+                                        target: n.id 
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+
+            if (parsedData.edges && Array.isArray(parsedData.edges)) {
+                parsedData.edges.forEach(e => {
+                    const sId = String(e.source || e.parentId);
+                    const tId = String(e.target || e.childId);
+                    const edgeId = sId + '_' + tId;
+
+                    if (cy.getElementById(sId).length > 0 && cy.getElementById(tId).length > 0) {
+                        if (cy.getElementById(edgeId).length === 0) {
+                            cy.add({ group: 'edges', data: { id: edgeId, source: sId, target: tId } });
+                        }
+                        const childNode = nodes.find(node => node.id === tId);
+                        if (childNode && !childNode.parents.includes(sId)) {
+                            childNode.parents.push(sId);
+                        }
+                    }
+                });
+            }
+            
+            cy.layout({
+                name: 'breadthfirst',
+                directed: true,
+                animate: false,
+                fit: true,
+                padding: 40
+            }).run();
+            
+            cy.fit(50); 
+            updateSelectors(); 
+            
+            alert("¡Red Bayesiana, jerarquías y valores de la CPT restaurados al 100%!");
         } catch (err) {
-            alert("Error al parsear el archivo JSON.");
+            console.error(err);
+            alert("Error crítico al cargar el archivo JSON: " + err.message);
         }
     };
     reader.readAsText(file);
 }
+
+// =========================================================================
+// PUENTE DE COMPATIBILIDAD (ALIAS PARA EL BOTÓN DE GUARDAR DEL HTML)
+// =========================================================================
+const saveNetworkToFile = saveNetwork;

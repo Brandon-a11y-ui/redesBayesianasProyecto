@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =========================================================================
-    // CONTROLES ORIGINALES MANTENIDOS INTACTOS
+    // CONTROLES DE LA INTERFAZ GRÁFICA
     // =========================================================================
     document.getElementById('btnAddNode').addEventListener('click', () => {
         const nameInput = document.getElementById('nodeName');
@@ -215,16 +215,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btnShowSteps').addEventListener('click', showInferenceSteps);
 
+    // =========================================================================
+    // PERSISTENCIA: Manejadores de Carga y Guardado JSON (Corregidos)
+    // =========================================================================
     const fileLoader = document.getElementById('fileLoadNetwork');
-    document.getElementById('btnLoadNetwork').addEventListener('click', () => fileLoader.click());
-    fileLoader.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            loadNetworkFromFile(e.target.files[0]);
-            e.target.value = '';
+    
+    // Disparador del evento de guardado con el nombre exacto de la función en graph.js
+    document.getElementById('btnSaveNetwork').addEventListener('click', () => {
+        if (typeof saveNetworkToFile === 'function') {
+            saveNetworkToFile();
+        } else {
+            alert("Error: La función saveNetworkToFile no está definida en graph.js.");
         }
     });
 
-    // Modales CPT (Bayes)
+    // Simular el clic en el input file oculto al presionar el botón estético de la UI
+    document.getElementById('btnLoadNetwork').addEventListener('click', () => fileLoader.click());
+    
+    // Evento change que lee el archivo y lo envía al cargador estructurado secuencial
+    fileLoader.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            if (typeof loadNetworkFromFile === 'function') {
+                loadNetworkFromFile(e.target.files[0]);
+            } else {
+                alert("Error: La función loadNetworkFromFile no está definida en graph.js.");
+            }
+            e.target.value = ''; // Limpiar el input para permitir cargar el mismo archivo consecutivamente
+        }
+    });
+
+    // =========================================================================
+    // MODALES: Manejo de Ventanas de Diálogo de CPTs y Matrices HMM
+    // =========================================================================
+    
+    // Modales CPT (Redes Bayesianas)
     document.querySelectorAll('.close-modal, #btnCancelModal').forEach(el => {
         el.addEventListener('click', closeCPTModal);
     });
