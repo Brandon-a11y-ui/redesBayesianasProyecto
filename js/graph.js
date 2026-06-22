@@ -2,8 +2,10 @@
 // graph.js : Gestión del lienzo (Cytoscape.js), CPTs y Estructuras HMM
 // =========================================================================
 
-let cy;
-let nodes = []; // Estructura: { id, name, parents: [], cpt: {} }
+let cy = null;
+let nodes = [];
+let edges = [];
+let nextNodeId = 1;
 
 // Estructuras de datos globales para almacenar las matrices del HMM
 let hmmStates = [];       // Nombres de los estados ocultos
@@ -12,423 +14,468 @@ let hmmPi = [];           // Vector Distribución Inicial (Array de tamaño N)
 let hmmA = [];            // Matriz de Transición (Matriz de NxN)
 let hmmB = [];            // Matriz de Emisión (Matriz de NxM)
 
-// Inicialización del lienzo Cytoscape
+// Inicializa el grafo con Cytoscape
 function initGraph() {
+    console.log("Iniciando Cytoscape...");
+    
+    const container = document.getElementById('cy');
+    if (!container) {
+        console.error("No se encontró el elemento #cy");
+        return;
+    }
+    
     cy = cytoscape({
-        container: document.getElementById('cy'),
+        container: container,
+        elements: [],
         style: [
             {
                 selector: 'node',
                 style: {
+                    'label': 'data(label)',
                     'background-color': '#1a237e',
-                    'label': 'data(name)',
-                    'color': '#fff',
+                    'color': 'white',
                     'text-valign': 'center',
                     'text-halign': 'center',
+                    'width': '80px',
+                    'height': '40px',
                     'font-size': '12px',
-                    'width': '60px',
-                    'height': '60px'
+                    'border-width': 2,
+                    'border-color': '#0d1652'
                 }
             },
             {
                 selector: 'node.hmm-state',
                 style: {
                     'background-color': '#2e7d32', // Verde para estados ocultos HMM
-                    'shape': 'ellipse'
+                    'shape': 'ellipse',
+                    'width': '60px',
+                    'height': '60px'
                 }
             },
             {
                 selector: 'node.hmm-obs',
                 style: {
-                    'background-color': '#ef6c00', // Naranja para observaciones HMM
-                    'shape': 'rectangle'
+                    'background-color': '#0288d1', // Azul para observaciones HMM (Estilo Original)
+                    'shape': 'rectangle',
+                    'width': '80px',
+                    'height': '40px'
                 }
             },
             {
                 selector: 'edge',
                 style: {
-                    'width': 3,
-                    'line-color': '#78909c',
-                    'target-arrow-color': '#78909c',
+                    'width': 2,
+                    'line-color': '#666',
+                    'target-arrow-color': '#666',
                     'target-arrow-shape': 'triangle',
-                    'curve-style': 'bezier',
-                    'control-point-step-size': 40
+                    'curve-style': 'bezier'
                 }
             },
             {
-                selector: 'edge.hmm-edge',
+                selector: 'edge.hmm-transition',
                 style: {
-                    'line-color': '#455a64',
-                    'target-arrow-color': '#455a64',
-                    'label': 'data(label)',
-                    'font-size': '10px',
-                    'color': '#333',
-                    'text-background-opacity': 0.7,
-                    'text-background-color': '#fff',
-                    'text-background-padding': '3px',
-                    'text-background-shape': 'roundrectangle'
+                    'line-color': '#c62828', // Rojo sólido para transiciones
+                    'target-arrow-color': '#c62828',
+                    'line-style': 'solid'
+                }
+            },
+            {
+                selector: 'edge.hmm-emission',
+                style: {
+                    'line-color': '#757575', // Gris discontinuo para emisiones
+                    'target-arrow-color': '#757575',
+                    'line-style': 'dashed'
                 }
             }
         ],
-        layout: { name: 'grid' }
+        layout: {
+            name: 'breadthfirst',
+            fit: true,
+            padding: 30,
+            directed: true
+        }
     });
 
-    // Evento de doble clic sobre los nodos del grafo
-    cy.on('dblclick', 'node', (evt) => {
-        const nodeClicked = evt.target;
-        const currentModel = document.getElementById('globalModelType').value;
-
-        if (currentModel === 'bayes') {
+    // Manejador de doble clic original para las CPTs Bayesianas
+    cy.on('dblclick', 'node', function(evt) {
+        const modelType = document.getElementById('globalModelType').value;
+        if (modelType === 'bayes') {
+            const nodeClicked = evt.target;
             openCPTModal(nodeClicked.id());
-        } else {
-            alert("En el modo HMM, los parámetros globales se configuran colectivamente desde el botón 'Configurar Matrices HMM' en el panel izquierdo.");
         }
     });
 }
 
 // =========================================================================
-// MÉTODOS DE LA INTERFAZ DE USUARIO Y GRAFO (BAYES ORIGINAL)
+// MÉTODOS DE MANIPULACIÓN DEL GRAFO (Redes Bayesianas Nativas)
 // =========================================================================
 function addNodeToGraph(name) {
-    const id = 'n' + (nodes.length + 1) + '_' + Date.now();
-    const newNode = {
-        id: id,
-        name: name,
-        parents: [],
-        cpt: {}
-    };
-    
-    initializeCPT(newNode);
-    nodes.push(newNode);
+    const id = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+    const modelType = document.getElementById('globalModelType').value;
 
-    cy.add({
-        group: 'nodes',
-        data: { id: id, name: name }
-    });
-
-    cy.layout({
-        name: 'breadthfirst',
-        directed: true,
-        animate: true,
-        animationDuration: 300,
-        fit: true,
-        padding: 40
-    }).run();
-
-    updateSelectors();
+    if (modelType === 'bayes') {
+        const newNode = { id: id, name: name, parents: [], cpt: {}, values: ['True', 'False'] };
+        nodes.push(newNode);
+        cy.add({ data: { id: id, label: name } });
+        initializeCPT(newNode);
+        cy.layout({ name: 'breadthfirst', directed: true, padding: 30 }).run();
+        updateSelectors();
+    } else {
+        nodes.push({ id: id, name: name, isObservation: false });
+    }
 }
 
 function addEdgeToGraph(parentId, childId) {
-    if (parentId === childId) return;
-
     if (wouldCreateCycle(parentId, childId)) {
-        alert("Error: No se puede añadir la conexión ya que generaría un ciclo. Las Redes Bayesianas son Grafos Acíclicos Dirigidos (DAG).");
+        alert("Error: No se puede conectar. Rompe la propiedad Acíclica de la Red (DAG).");
         return;
     }
-
     const childNode = nodes.find(n => n.id === childId);
-    if (!childNode) return;
-
-    if (childNode.parents.includes(parentId)) {
-        alert("La conexión ya existe actualmente.");
-        return;
+    if (childNode && !childNode.parents.includes(parentId)) {
+        childNode.parents.push(parentId);
+        cy.add({ data: { id: parentId + '_' + childId, source: parentId, target: childId } });
+        initializeCPT(childNode);
+        cy.layout({ name: 'bezier' }).run();
     }
-
-    childNode.parents.push(parentId);
-    
-    cy.add({
-        group: 'edges',
-        data: { id: parentId + '_' + childId, source: parentId, target: childId }
-    });
-
-    initializeCPT(childNode);
-
-    cy.layout({
-        name: 'breadthfirst',
-        directed: true,
-        animate: true,
-        animationDuration: 300,
-        fit: true,
-        padding: 40
-    }).run();
-
-    updateSelectors();
-}
-
-function wouldCreateCycle(sourceId, targetId) {
-    let visited = new Set();
-    let queue = [targetId];
-
-    while (queue.length > 0) {
-        let curr = queue.shift();
-        if (curr === sourceId) return true;
-
-        let currNode = nodes.find(n => n.id === curr);
-        if (currNode && currNode.parents) {
-            let childrenIds = [];
-            nodes.forEach(n => {
-                if (n.parents.includes(curr)) { childrenIds.push(n.id); }
-            });
-            childrenIds.forEach(c => {
-                if (!visited.has(c)) {
-                    visited.add(c);
-                    queue.push(c);
-                }
-            });
-        }
-    }
-    return false;
-}
-
-function initializeCPT(node) {
-    node.cpt = {};
-    const combinations = getParentCombinations(node.parents);
-
-    if (combinations.length === 0) {
-        node.cpt["true"] = 0.5;
-    } else {
-        combinations.forEach(comb => {
-            node.cpt[comb] = 0.5;
-        });
-    }
-}
-
-function getParentCombinations(parentIds) {
-    if (!parentIds || parentIds.length === 0) return [];
-    
-    let results = [[]];
-    for (let i = 0; i < parentIds.length; i++) {
-        let pNode = nodes.find(n => n.id === parentIds[i]);
-        let pName = pNode ? pNode.name : parentIds[i];
-        
-        let newResults = [];
-        results.forEach(res => {
-            newResults.push([...res, `${pName}=True`]);
-            newResults.push([...res, `${pName}=False`]);
-        });
-        results = newResults;
-    }
-    return results.map(res => res.join(', '));
-}
-
-function updateSelectors() {
-    const selParent = document.getElementById('selectParent');
-    const selChild = document.getElementById('selectChild');
-    const queryVar = document.getElementById('queryVar');
-    const evPanel = document.getElementById('evidencePanel');
-
-    if (!selParent) return; 
-
-    selParent.innerHTML = '';
-    selChild.innerHTML = '';
-    queryVar.innerHTML = '<option value="">-- Seleccionar --</option>';
-    if (evPanel) evPanel.innerHTML = '';
-
-    nodes.forEach(n => {
-        let opt1 = document.createElement('option');
-        opt1.value = n.id; opt1.textContent = n.name;
-        selParent.appendChild(opt1);
-
-        let opt2 = document.createElement('option');
-        opt2.value = n.id; opt2.textContent = n.name;
-        selChild.appendChild(opt2);
-
-        let opt3 = document.createElement('option');
-        opt3.value = n.id; opt3.textContent = n.name;
-        queryVar.appendChild(opt3);
-
-        if (evPanel) {
-            let div = document.createElement('div');
-            div.className = 'evidence-row';
-            div.innerHTML = `
-                <span>${n.name}:</span>
-                <select id="ev_${n.id}">
-                    <option value="none">Sin Evidencia</option>
-                    <option value="True">True</option>
-                    <option value="False">False</option>
-                </select>
-            `;
-            evPanel.appendChild(div);
-        }
-    });
 }
 
 function clearGraph() {
-    if (cy) cy.elements().remove();
     nodes = [];
     hmmStates = [];
     hmmObservations = [];
     hmmPi = [];
     hmmA = [];
     hmmB = [];
+    if (cy) cy.elements().remove();
     updateSelectors();
-    document.getElementById('resultPanel').innerHTML = '<p>Esperando consulta o secuencia...</p>';
+}
+
+function wouldCreateCycle(startId, endId) {
+    if (startId === endId) return true;
+    let visited = new Set();
+    let queue = [endId];
+    while (queue.length > 0) {
+        let curr = queue.shift();
+        if (curr === startId) return true;
+        visited.add(curr);
+        let currNode = nodes.find(n => n.id === curr);
+        if (currNode && currNode.parents) {
+            currNode.parents.forEach(p => {
+                if (!visited.has(p)) queue.push(p);
+            });
+        }
+    }
+    return false;
+}
+
+function updateSelectors() {
+    const pSel = document.getElementById('selectParent');
+    const cSel = document.getElementById('selectChild');
+    const qSel = document.getElementById('queryVar');
+    const evPanel = document.getElementById('evidencePanel');
+
+    if (!pSel || !cSel || !qSel) return;
+
+    pSel.innerHTML = '';
+    cSel.innerHTML = '';
+    qSel.innerHTML = '';
+    if (evPanel) evPanel.innerHTML = '';
+
+    nodes.forEach(n => {
+        const o1 = document.createElement('option'); o1.value = n.id; o1.textContent = n.name;
+        const o2 = document.createElement('option'); o2.value = n.id; o2.textContent = n.name;
+        const o3 = document.createElement('option'); o3.value = n.id; o3.textContent = n.name;
+        
+        pSel.appendChild(o1);
+        cSel.appendChild(o2);
+        qSel.appendChild(o3);
+
+        if (evPanel) {
+            const row = document.createElement('div');
+            row.className = 'evidence-row';
+            row.innerHTML = `
+                <span>${n.name}:</span>
+                <select id="ev_${n.id}">
+                    <option value="">Sin evidencia</option>
+                    <option value="True">True</option>
+                    <option value="False">False</option>
+                </select>
+            `;
+            evPanel.appendChild(row);
+        }
+    });
 }
 
 // =========================================================================
-// VENTANA MODAL PARA EDICIÓN DE CPTS (CON PARSER DE PERMUTACIÓN DE CLAVES)
+// GESTIÓN DE TABLAS DE PROBABILIDAD CONDICIONAL (CPT Bayesianas)
 // =========================================================================
-let currentModalNodeId = null;
+let currentEditingNodeId = null;
+
+function initializeCPT(node) {
+    node.cpt = {};
+    const combinations = getParentCombinations(node.parents);
+    combinations.forEach(comb => {
+        node.cpt[comb] = 0.5;
+    });
+}
+
+function getParentCombinations(parentIds) {
+    if (parentIds.length === 0) return [""];
+    let result = [""];
+    parentIds.forEach(pId => {
+        const pNode = nodes.find(n => n.id === pId);
+        let newResult = [];
+        result.forEach(res => {
+            newResult.push((res ? res + "," : "") + pNode.name + "=True");
+            newResult.push((res ? res + "," : "") + pNode.name + "=False");
+        });
+        result = newResult;
+    });
+    return result;
+}
 
 function openCPTModal(nodeId) {
-    currentModalNodeId = nodeId;
+    currentEditingNodeId = nodeId;
     const node = nodes.find(n => n.id === nodeId);
-    if (!node) return;
-
     document.getElementById('modalNodeName').textContent = node.name;
+    
     const body = document.getElementById('modalBody');
     body.innerHTML = '';
 
+    let html = `<table class="cpt-table"><thead><tr>`;
+    node.parents.forEach(pId => {
+        html += `<th>${nodes.find(n => n.id === pId).name}</th>`;
+    });
+    html += `<th>P(${node.name} = True)</th><th>P(${node.name} = False)</th></tr></thead><tbody>`;
+
     const combinations = getParentCombinations(node.parents);
-    let tableHtml = `<table class="cpt-table">`;
-
-    if (combinations.length === 0) {
-        // Nodo raíz (Prior sin condiciones)
-        let savedVal = 0.5;
-        if (node.cpt) {
-            if (node.cpt["true"] !== undefined) savedVal = node.cpt["true"];
-            else if (node.cpt["True"] !== undefined) savedVal = node.cpt["True"];
-            else if (node.cpt[""] !== undefined) savedVal = node.cpt[""];
+    combinations.forEach((comb, idx) => {
+        html += `<tr>`;
+        if (comb !== "") {
+            const parts = comb.split(',');
+            parts.forEach(p => { html += `<td>${p.split('=')[1]}</td>`; });
         }
-        
-        tableHtml += `
-            <thead>
-                <tr><th>Condición</th><th>P(True)</th><th>P(False)</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Prior Probabilidad Base</td>
-                    <td><input type="number" step="0.01" min="0" max="1" id="cpt_base_true" value="${savedVal}" oninput="syncModalInputs('cpt_base_true','cpt_base_false')"></td>
-                    <td><input type="number" id="cpt_base_false" value="${(1 - savedVal).toFixed(4)}" disabled></td>
-                </tr>
-            </tbody>`;
-    } else {
-        // Nodo condicionado
-        tableHtml += `<thead><tr>`;
-        node.parents.forEach(pId => {
-            let pNode = nodes.find(n => n.id === pId);
-            tableHtml += `<th>${pNode ? pNode.name : 'Padre'}</th>`;
-        });
-        tableHtml += `<th>P(True | Padres)</th><th>P(False | Padres)</th></tr></thead><tbody>`;
 
-        combinations.forEach((comb, idx) => {
-            const states = comb.split(', ');
-            tableHtml += `<tr>`;
-            states.forEach(st => {
-                let val = st.split('=')[1];
-                tableHtml += `<td>${val}</td>`;
+        // --- ALGORITMO DE EMPAREJAMIENTO DE LLAVES POR CONTENIDO ---
+        let valTrue = 0.5;
+        if (node.cpt) {
+            let currentPairs = comb.split(',').map(s => s.trim().toLowerCase());
+            
+            let correctKey = Object.keys(node.cpt).find(jsonKey => {
+                let jsonPairs = jsonKey.split(',').map(s => s.trim().toLowerCase());
+                if (jsonPairs.length !== currentPairs.length) return false;
+                return jsonPairs.every(p => currentPairs.includes(p));
             });
 
-            // --- ALGORITMO DE EMPAREJAMIENTO DE LLAVES POR CONTENIDO ---
-            let valTrue = 0.5;
-            
-            if (node.cpt) {
-                let currentPairs = comb.split(',').map(s => s.trim().toLowerCase());
-                
-                let correctKey = Object.keys(node.cpt).find(jsonKey => {
-                    let jsonPairs = jsonKey.split(',').map(s => s.trim().toLowerCase());
-                    if (jsonPairs.length !== currentPairs.length) return false;
-                    return jsonPairs.every(p => currentPairs.includes(p));
-                });
-
-                if (correctKey !== undefined) {
-                    valTrue = node.cpt[correctKey];
-                } else if (node.cpt[comb] !== undefined) {
-                    valTrue = node.cpt[comb];
-                }
+            if (correctKey !== undefined) {
+                valTrue = typeof node.cpt[correctKey] === 'number' ? node.cpt[correctKey] : 0.5;
+            } else if (node.cpt[comb] !== undefined) {
+                valTrue = typeof node.cpt[comb] === 'number' ? node.cpt[comb] : 0.5;
             }
-            
-            const valFalse = (1 - valTrue).toFixed(4);
+        }
 
-            tableHtml += `
-                <td><input type="number" step="0.01" min="0" max="1" class="cpt-matrix-input" data-comb="${comb}" id="cpt_input_t_${idx}" value="${valTrue}" oninput="syncModalInputs('cpt_input_t_${idx}','cpt_input_f_${idx}')"></td>
-                <td id="cpt_input_f_${idx}">${valFalse}</td>
-            </tr>`;
-        });
-    }
+        const valFalse = (1 - valTrue).toFixed(4);
 
-    tableHtml += `</tbody></table><p><small style="color:#2e7d32; font-weight:bold;">Cada fila debe sumar exactamente 1.0</small></p>`;
-    body.innerHTML = tableHtml;
+        html += `
+            <td><input type="number" step="0.01" min="0" max="1" id="cpt_val_${idx}" value="${valTrue}" onchange="document.getElementById('cpt_lbl_${idx}').innerText = (1 - this.value).toFixed(4)"></td>
+            <td id="cpt_lbl_${idx}">${valFalse}</td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    body.innerHTML = html;
     document.getElementById('cptModal').style.display = 'block';
 }
 
-function syncModalInputs(trueInputId, falseInputId) {
-    const trueInput = document.getElementById(trueInputId);
-    const falseInput = document.getElementById(falseInputId);
-    if (trueInput && falseInput) {
-        let val = parseFloat(trueInput.value);
-        if (isNaN(val)) val = 0;
-        if (val < 0) { val = 0; trueInput.value = 0; }
-        if (val > 1) { val = 1; trueInput.value = 1; }
-        
-        if(falseInput.tagName === 'INPUT') {
-            falseInput.value = (1 - val).toFixed(4);
-        } else {
-            falseInput.innerText = (1 - val).toFixed(4);
+function closeCPTModal() {
+    document.getElementById('cptModal').style.display = 'none';
+    currentEditingNodeId = null;
+}
+
+function saveCurrentCPT() {
+    if (!currentEditingNodeId) return;
+    const node = nodes.find(n => n.id === currentEditingNodeId);
+    const combinations = getParentCombinations(node.parents);
+    
+    let newCPT = {};
+    for (let i = 0; i < combinations.length; i++) {
+        const inputVal = parseFloat(document.getElementById(`cpt_val_${i}`).value);
+        if (isNaN(inputVal) || inputVal < 0 || inputVal > 1) {
+            alert("Por favor, introduce valores probabilísticos válidos entre 0.0 y 1.0");
+            return;
         }
+        newCPT[combinations[i]] = inputVal;
     }
+    node.cpt = newCPT;
+    closeCPTModal();
+    alert(`CPT de "${node.name}" guardada con éxito.`);
 }
 
 // =========================================================================
-// ENTREGA NATIVA: RENDERIZADOR E INGESTA AUTOMÁTICA DEL HMM (MANTENIDO)
+// ENTREGA NATIVA RECONSTRUIDA PARA MODELOS OCULTOS DE MARKOV (HMM) - INTACTA
 // =========================================================================
 function renderHMMTopology(statesTokens, observationsTokens) {
-    if (cy) cy.elements().remove();
-    nodes = [];
-
-    // Limpieza e inyección limpia en variables globales
+    clearGraph();
     hmmStates = statesTokens.map(s => s.trim()).filter(s => s);
     hmmObservations = observationsTokens.map(o => o.trim()).filter(o => o);
 
-    // 1. Dibujar Estados Ocultos (Círculos verdes en fila superior)
-    hmmStates.forEach((stateName, idx) => {
-        const nodeId = 'hmm_s_' + idx;
-        nodes.push({ id: nodeId, name: stateName, type: 'state' });
+    const canvasWidth = document.getElementById('cy').clientWidth || 600;
+    const paddingX = 80;
+
+    // 1. Renderizar Estados Ocultos (Fila Superior - Círculos Verdes)
+    const stateSpacing = (canvasWidth - paddingX * 2) / Math.max(1, hmmStates.length - 1);
+    hmmStates.forEach((stateName, index) => {
+        const id = 'state_' + stateName;
+        const posX = paddingX + index * stateSpacing;
+        const posY = 100;
+
         cy.add({
             group: 'nodes',
-            data: { id: nodeId, name: stateName },
-            classes: 'hmm-state',
-            position: { x: 150 + (idx * 160), y: 100 }
+            data: { id: id, label: stateName },
+            position: { x: posX, y: posY },
+            classes: 'hmm-state'
         });
+        nodes.push({ id: id, name: stateName, isObservation: false, values: ['True', 'False'] });
     });
 
-    // 2. Dibujar Nodos de Observación (Rectángulos naranjas en fila inferior)
-    hmmObservations.forEach((obsName, idx) => {
-        const nodeId = 'hmm_o_' + idx;
-        nodes.push({ id: nodeId, name: obsName, type: 'observation' });
+    // 2. Renderizar Observaciones (Fila Inferior - Rectángulos Azules Originales)
+    const obsSpacing = (canvasWidth - paddingX * 2) / Math.max(1, hmmObservations.length - 1);
+    hmmObservations.forEach((obsName, index) => {
+        const id = 'obs_' + obsName;
+        const posX = paddingX + index * obsSpacing;
+        const posY = 280;
+
         cy.add({
             group: 'nodes',
-            data: { id: nodeId, name: obsName },
-            classes: 'hmm-obs',
-            position: { x: 150 + (idx * 140), y: 280 }
+            data: { id: id, label: obsName },
+            position: { x: posX, y: posY },
+            classes: 'hmm-obs'
         });
+        nodes.push({ id: id, name: obsName, isObservation: true });
     });
 
-    // 3. Dibujar aristas de Transición (A)
+    // 3. Crear Arcos de Transición en la Cadena Oculta (Rojo Sólido)
     for (let i = 0; i < hmmStates.length; i++) {
-        let srcId = 'hmm_s_' + i;
-        cy.add({ group: 'edges', data: { id: `trans_self_${i}`, source: srcId, target: srcId, label: 'a(i,i)' }, classes: 'hmm-edge' });
-        if (i < hmmStates.length - 1) {
-            let dstId = 'hmm_s_' + (i + 1);
-            cy.add({ group: 'edges', data: { id: `trans_next_${i}`, source: srcId, target: dstId, label: 'a(i,j)' }, classes: 'hmm-edge' });
-        }
-    }
-
-    // 4. Dibujar aristas de Emisión (B)
-    for (let i = 0; i < hmmStates.length; i++) {
-        for (let j = 0; j < Math.min(hmmObservations.length, 3); j++) {
+        for (let j = 0; j < hmmStates.length; j++) {
             cy.add({
                 group: 'edges',
-                data: { id: `emis_${i}_${j}`, source: 'hmm_s_' + i, target: 'hmm_o_' + j, label: 'b(i,k)' },
-                classes: 'hmm-edge'
+                data: {
+                    id: `t_edge_${hmmStates[i]}_${hmmStates[j]}`,
+                    source: 'state_' + hmmStates[i],
+                    target: 'state_' + hmmStates[j]
+                },
+                classes: 'hmm-transition'
             });
         }
     }
-    cy.fit();
+
+    // 4. Crear Arcos de Emisión (Gris Discontinuo)
+    for (let i = 0; i < hmmStates.length; i++) {
+        for (let j = 0; j < hmmObservations.length; j++) {
+            cy.add({
+                group: 'edges',
+                data: {
+                    id: `e_edge_${hmmStates[i]}_${hmmObservations[j]}`,
+                    source: 'state_' + hmmStates[i],
+                    target: 'obs_' + hmmObservations[j]
+                },
+                classes: 'hmm-emission'
+            });
+        }
+    }
+
+    cy.fit(50);
 }
 
 // =========================================================================
-// MÉTODOS DE PERSISTENCIA (CON TU IMPLEMENTACIÓN ESTRICTA DE CARGA)
+// CONSTRUCTOR DE FORMULARIOS DE MATRICES HMM - INTACTO
+// =========================================================================
+function buildHMMModalTables() {
+    const container = document.getElementById('hmmModalBody');
+    container.innerHTML = '';
+
+    if (hmmStates.length === 0 || hmmObservations.length === 0) return;
+
+    let html = '';
+
+    // Vector Pi
+    html += `<h4>Vector de Distribución Inicial (π)</h4>`;
+    html += `<table class="hmm-matrix-table"><thead><tr>`;
+    hmmStates.forEach(s => { html += `<th>${s}</th>`; });
+    html += `</tr></thead><tbody><tr>`;
+    hmmStates.forEach((s, i) => {
+        const val = hmmPi[i] !== undefined ? hmmPi[i] : (1 / hmmStates.length).toFixed(2);
+        html += `<td><input type="number" step="0.01" min="0" max="1" id="hmm_pi_${i}" value="${val}"></td>`;
+    });
+    html += `</tr></tbody></table><hr>`;
+
+    // Matriz A
+    html += `<h4>Matriz de Transición de Estados (A) [Fila -> Columna]</h4>`;
+    html += `<table class="hmm-matrix-table"><thead><tr><th>Estado Actual</th>`;
+    hmmStates.forEach(s => { html += `<th>${s}</th>`; });
+    html += `</tr></thead><tbody>`;
+    hmmStates.forEach((sRow, i) => {
+        html += `<tr><td><strong>${sRow}</strong></td>`;
+        hmmStates.forEach((sCol, j) => {
+            let val = (1 / hmmStates.length).toFixed(2);
+            if (hmmA[i] && hmmA[i][j] !== undefined) val = hmmA[i][j];
+            html += `<td><input type="number" step="0.01" min="0" max="1" id="hmm_A_${i}_${j}" value="${val}"></td>`;
+        });
+        html += `</tr>`;
+    });
+    html += `</tbody></table><hr>`;
+
+    // Matriz B
+    html += `<h4>Matriz de Emisión de Observaciones (B)</h4>`;
+    html += `<table class="hmm-matrix-table"><thead><tr><th>Estado Oculto</th>`;
+    hmmObservations.forEach(o => { html += `<th>${o}</th>`; });
+    html += `</tr></thead><tbody>`;
+    hmmStates.forEach((s, i) => {
+        html += `<tr><td><strong>${s}</strong></td>`;
+        hmmObservations.forEach((o, j) => {
+            let val = (1 / hmmObservations.length).toFixed(2);
+            if (hmmB[i] && hmmB[i][j] !== undefined) val = hmmB[i][j];
+            html += `<td><input type="number" step="0.01" min="0" max="1" id="hmm_B_${i}_${j}" value="${val}"></td>`;
+        });
+        html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+
+    container.innerHTML = html;
+}
+
+function saveHMMParameters() {
+    hmmPi = [];
+    hmmA = [];
+    hmmB = [];
+
+    const N = hmmStates.length;
+    const M = hmmObservations.length;
+
+    for (let i = 0; i < N; i++) {
+        hmmPi.push(parseFloat(document.getElementById(`hmm_pi_${i}`).value));
+    }
+
+    for (let i = 0; i < N; i++) {
+        let row = [];
+        for (let j = 0; j < N; j++) {
+            row.push(parseFloat(document.getElementById(`hmm_A_${i}_${j}`).value));
+        }
+        hmmA.push(row);
+    }
+
+    for (let i = 0; i < N; i++) {
+        let row = [];
+        for (let j = 0; j < M; j++) {
+            row.push(parseFloat(document.getElementById(`hmm_B_${i}_${j}`).value));
+        }
+        hmmB.push(row);
+    }
+
+    alert("📊 Parámetros del HMM almacenados correctamente en memoria y listos para inferencia.");
+}
+
+// =========================================================================
+// MÉTODOS DE PERSISTENCIA (LECTURA OPTIMIZADA DESDE TU FUNCIÓN ADAPTADA)
 // =========================================================================
 function saveNetwork() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(nodes));
@@ -445,6 +492,8 @@ function loadNetworkFromFile(file) {
     reader.onload = function(e) {
         try {
             const parsedData = JSON.parse(e.target.result);
+            
+            // Lector tolerante para arreglos directos o envueltos
             const uploadedNodes = parsedData.nodes ? parsedData.nodes : parsedData;
             
             if (!Array.isArray(uploadedNodes)) {
@@ -454,6 +503,7 @@ function loadNetworkFromFile(file) {
             clearGraph();
             nodes = []; 
 
+            // Inyectar nodos conservando la CPT original intacta
             uploadedNodes.forEach(n => {
                 let cleanParents = [];
                 if (n.parents && Array.isArray(n.parents)) {
@@ -464,17 +514,20 @@ function loadNetworkFromFile(file) {
                     id: String(n.id),         
                     name: String(n.name),
                     parents: cleanParents,
-                    cpt: n.cpt || {}          
+                    cpt: n.cpt || {},
+                    values: n.values || ['True', 'False']
                 });
             });
             
+            // Renderizar los nodos en Cytoscape
             nodes.forEach(n => {
                 cy.add({ 
                     group: 'nodes',
-                    data: { id: n.id, name: n.name }
+                    data: { id: n.id, label: n.name }
                 });
             });
             
+            // Renderizar aristas basándose en la lista de padres
             nodes.forEach(n => {
                 if (n.parents && n.parents.length > 0) {
                     n.parents.forEach(pId => {
@@ -483,11 +536,7 @@ function loadNetworkFromFile(file) {
                             if (cy.getElementById(edgeId).length === 0) {
                                 cy.add({ 
                                     group: 'edges',
-                                    data: { 
-                                        id: edgeId, 
-                                        source: pId, 
-                                        target: n.id 
-                                    }
+                                    data: { id: edgeId, source: pId, target: n.id }
                                 });
                             }
                         }
@@ -495,6 +544,7 @@ function loadNetworkFromFile(file) {
                 }
             });
 
+            // Compatibilidad por aristas externas explícitas
             if (parsedData.edges && Array.isArray(parsedData.edges)) {
                 parsedData.edges.forEach(e => {
                     const sId = String(e.source || e.parentId);
@@ -524,7 +574,7 @@ function loadNetworkFromFile(file) {
             cy.fit(50); 
             updateSelectors(); 
             
-            alert("¡Red Bayesiana, jerarquías y valores de la CPT restaurados al 100%!");
+            alert("¡Red Bayesiana y valores de la CPT restaurados al 100%!");
         } catch (err) {
             console.error(err);
             alert("Error crítico al cargar el archivo JSON: " + err.message);
@@ -533,5 +583,4 @@ function loadNetworkFromFile(file) {
     reader.readAsText(file);
 }
 
-// Alises de compatibilidad global para main.js
 const saveNetworkToFile = saveNetwork;
