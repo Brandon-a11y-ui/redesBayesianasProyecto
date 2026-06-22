@@ -369,45 +369,6 @@ function syncModalInputs(trueInputId, falseInputId) {
     }
 }
 
-function closeCPTModal() {
-    document.getElementById('cptModal').style.display = 'none';
-    currentModalNodeId = null;
-}
-
-function saveCurrentCPT() {
-    if (!currentModalNodeId) return;
-    const node = nodes.find(n => n.id === currentModalNodeId);
-    if (!node) return;
-
-    const combinations = getParentCombinations(node.parents);
-
-    if (combinations.length === 0) {
-        const baseTrue = parseFloat(document.getElementById('cpt_base_true').value);
-        if (isNaN(baseTrue) || baseTrue < 0 || baseTrue > 1) {
-            alert("Inserta un valor válido de probabilidad entre 0.0 y 1.0");
-            return;
-        }
-        node.cpt = { "true": baseTrue, "True": baseTrue, "": baseTrue };
-    } else {
-        let newCpt = {};
-        for (let idx = 0; idx < combinations.length; idx++) {
-            const inputTrue = document.getElementById(`cpt_input_t_${idx}`);
-            const combKey = inputTrue.getAttribute('data-comb');
-            const valTrue = parseFloat(inputTrue.value);
-
-            if (isNaN(valTrue) || valTrue < 0 || valTrue > 1) {
-                alert(`Valor inválido en la fila número ${idx + 1}.`);
-                return;
-            }
-            newCpt[combKey] = valTrue;
-        }
-        node.cpt = newCpt;
-    }
-
-    alert(`Tabla CPT guardada exitosamente para el nodo: "${node.name}"`);
-    closeCPTModal();
-}
-
 // =========================================================================
 // ENTREGA NATIVA: RENDERIZADOR E INGESTA AUTOMÁTICA DEL HMM (MANTENIDO)
 // =========================================================================
