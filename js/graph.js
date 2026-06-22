@@ -409,84 +409,17 @@ function saveCurrentCPT() {
 }
 
 // =========================================================================
-// INGESTA RÁPIDA POR TEXTO PLANO (.TXT)
+// ENTREGA NATIVA: RENDERIZADOR E INGESTA AUTOMÁTICA DEL HMM (MANTENIDO)
 // =========================================================================
-function processTxtIngestion(text) {
-    clearGraph();
-    const lines = text.split('\n');
-    const modelSelector = document.getElementById('globalModelType');
-
-    let mode = 'bayes';
-    let rawNodes = [];
-    let rawEdges = [];
-
-    lines.forEach(line => {
-        let clean = line.trim();
-        if (!clean || clean.startsWith('#')) return;
-
-        if (clean.toLowerCase().startsWith('nodos:')) {
-            mode = 'bayes';
-            let content = clean.substring(6);
-            rawNodes = content.split(',').map(s => s.trim()).filter(s => s !== '');
-        } else if (clean.toLowerCase().startsWith('conexiones:')) {
-            let content = clean.substring(12);
-            rawEdges = content.split(',').map(s => s.trim()).filter(s => s !== '');
-        } else if (clean.toLowerCase().startsWith('estados:')) {
-            mode = 'hmm';
-            let content = clean.substring(8);
-            hmmStates = content.split(',').map(s => s.trim()).filter(s => s !== '');
-        } else if (clean.toLowerCase().startsWith('observaciones:')) {
-            mode = 'hmm';
-            let content = clean.substring(14);
-            hmmObservations = content.split(',').map(s => s.trim()).filter(s => s !== '');
-        }
-    });
-
-    if (mode === 'bayes') {
-        modelSelector.value = 'bayes';
-        if (rawNodes.length === 0) { alert("No se detectaron declaraciones de nodos válidos."); return; }
-        
-        rawNodes.forEach(name => {
-            const id = 'n_' + name.toLowerCase().replace(/\s+/g, '');
-            const newNode = { id: id, name: name, parents: [], cpt: {} };
-            initializeCPT(newNode);
-            nodes.push(newNode);
-            cy.add({ group: 'nodes', data: { id: id, name: name } });
-        });
-
-        rawEdges.forEach(edgeStr => {
-            let parts = edgeStr.split('->');
-            if (parts.length === 2) {
-                let pName = parts[0].trim();
-                let cName = parts[1].trim();
-                let pNode = nodes.find(n => n.name.toLowerCase() === pName.toLowerCase());
-                let cNode = nodes.find(n => n.name.toLowerCase() === cName.toLowerCase());
-                if (pNode && cNode) {
-                    cNode.parents.push(pNode.id);
-                    cy.add({ group: 'edges', data: { id: pNode.id + '_' + cNode.id, source: pNode.id, target: cNode.id } });
-                    initializeCPT(cNode);
-                }
-            }
-        });
-
-        cy.layout({ name: 'breadthfirst', directed: true, padding: 30 }).run();
-        updateSelectors();
-        alert("Estructura de Red Bayesiana cargada vía Texto Plano.");
-    } else {
-        modelSelector.value = 'hmm';
-        if (hmmStates.length === 0 || hmmObservations.length === 0) {
-            alert("Para HMM se requiere declarar tanto 'estados:' como 'observaciones:'.");
-            return;
-        }
-        renderHMMVisualTopology();
-        alert(`Modelo HMM cargado estructuralmente.`);
-    }
-}
-
-function renderHMMVisualTopology() {
+function renderHMMTopology(statesTokens, observationsTokens) {
     if (cy) cy.elements().remove();
     nodes = [];
 
+    // Limpieza e inyección limpia en variables globales
+    hmmStates = statesTokens.map(s => s.trim()).filter(s => s);
+    hmmObservations = observationsTokens.map(o => o.trim()).filter(o => o);
+
+    // 1. Dibujar Estados Ocultos (Círculos verdes en fila superior)
     hmmStates.forEach((stateName, idx) => {
         const nodeId = 'hmm_s_' + idx;
         nodes.push({ id: nodeId, name: stateName, type: 'state' });
@@ -498,6 +431,7 @@ function renderHMMVisualTopology() {
         });
     });
 
+    // 2. Dibujar Nodos de Observación (Rectángulos naranjas en fila inferior)
     hmmObservations.forEach((obsName, idx) => {
         const nodeId = 'hmm_o_' + idx;
         nodes.push({ id: nodeId, name: obsName, type: 'observation' });
@@ -509,6 +443,7 @@ function renderHMMVisualTopology() {
         });
     });
 
+    // 3. Dibujar aristas de Transición (A)
     for (let i = 0; i < hmmStates.length; i++) {
         let srcId = 'hmm_s_' + i;
         cy.add({ group: 'edges', data: { id: `trans_self_${i}`, source: srcId, target: srcId, label: 'a(i,i)' }, classes: 'hmm-edge' });
@@ -518,6 +453,7 @@ function renderHMMVisualTopology() {
         }
     }
 
+    // 4. Dibujar aristas de Emisión (B)
     for (let i = 0; i < hmmStates.length; i++) {
         for (let j = 0; j < Math.min(hmmObservations.length, 3); j++) {
             cy.add({
@@ -548,7 +484,6 @@ function loadNetworkFromFile(file) {
     reader.onload = function(e) {
         try {
             const parsedData = JSON.parse(e.target.result);
-            
             const uploadedNodes = parsedData.nodes ? parsedData.nodes : parsedData;
             
             if (!Array.isArray(uploadedNodes)) {
@@ -637,7 +572,5 @@ function loadNetworkFromFile(file) {
     reader.readAsText(file);
 }
 
-// =========================================================================
-// PUENTE DE COMPATIBILIDAD (ALIAS PARA EL BOTÓN DE GUARDAR DEL HTML)
-// =========================================================================
+// Alises de compatibilidad global para main.js
 const saveNetworkToFile = saveNetwork;
