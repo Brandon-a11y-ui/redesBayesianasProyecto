@@ -24,7 +24,7 @@ p {
 }
 
 /* =========================================================================
-   REQUISITO: Selector Global de Tipo de Red (Parte Dos)
+   REQUISITO: Selector Global de Tipo de Red
    ========================================================================= */
 .model-selector-container {
     background: white;
@@ -208,7 +208,7 @@ button:active {
     background: #0d1652 !important;
 }
 
-/* Botón peligroso / Limpiar todo */
+/* Boton Limpiar todo */
 .btn-danger {
     background-color: #c62828 !important;
     color: white;
@@ -400,7 +400,7 @@ button:active {
 }
 
 /* =========================================================================
-   Tablas Dinámicas de Matrices HMM (NUEVO - Parte Dos)
+   Tablas Dinámicas de Matrices HMM
    ========================================================================= */
 .hmm-matrix-table {
     width: 100%;

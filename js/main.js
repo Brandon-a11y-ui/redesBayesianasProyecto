@@ -1,5 +1,5 @@
 // =========================================================================
-// main.js : Coordinador de Eventos e Interfaz de Usuario (Entrega Final)
+//Coordinador de Eventos e Interfaz de Usuario
 // =========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {

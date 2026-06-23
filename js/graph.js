@@ -107,7 +107,7 @@ function initGraph() {
 }
 
 // =========================================================================
-// MÉTODOS DE MANIPULACIÓN DEL GRAFO (Redes Bayesianas Nativas)
+// MÉTODOS DE MANIPULACIÓN DEL GRAFO
 // =========================================================================
 function addNodeToGraph(name) {
     const id = 'n' + Date.now() + Math.floor(Math.random() * 1000);
@@ -311,7 +311,7 @@ function saveCurrentCPT() {
 }
 
 // =========================================================================
-// ENTREGA NATIVA RECONSTRUIDA PARA MODELOS OCULTOS DE MARKOV (HMM) - INTACTA
+// ENTREGA NATIVA RECONSTRUIDA PARA MODELOS OCULTOS DE MARKOV (HMM)
 // =========================================================================
 function renderHMMTopology(statesTokens, observationsTokens) {
     clearGraph();
@@ -321,7 +321,7 @@ function renderHMMTopology(statesTokens, observationsTokens) {
     const canvasWidth = document.getElementById('cy').clientWidth || 600;
     const paddingX = 80;
 
-    // 1. Renderizar Estados Ocultos (Fila Superior - Círculos Verdes)
+    // 1. Renderizar Estados Ocultos
     const stateSpacing = (canvasWidth - paddingX * 2) / Math.max(1, hmmStates.length - 1);
     hmmStates.forEach((stateName, index) => {
         const id = 'state_' + stateName;
@@ -337,7 +337,7 @@ function renderHMMTopology(statesTokens, observationsTokens) {
         nodes.push({ id: id, name: stateName, isObservation: false, values: ['True', 'False'] });
     });
 
-    // 2. Renderizar Observaciones (Fila Inferior - Rectángulos Azules Originales)
+    // 2. Renderizar Observaciones
     const obsSpacing = (canvasWidth - paddingX * 2) / Math.max(1, hmmObservations.length - 1);
     hmmObservations.forEach((obsName, index) => {
         const id = 'obs_' + obsName;
@@ -353,7 +353,7 @@ function renderHMMTopology(statesTokens, observationsTokens) {
         nodes.push({ id: id, name: obsName, isObservation: true });
     });
 
-    // 3. Crear Arcos de Transición en la Cadena Oculta (Rojo Sólido)
+    // 3. Crear Arcos de Transición en la Cadena Oculta 
     for (let i = 0; i < hmmStates.length; i++) {
         for (let j = 0; j < hmmStates.length; j++) {
             cy.add({
@@ -387,7 +387,7 @@ function renderHMMTopology(statesTokens, observationsTokens) {
 }
 
 // =========================================================================
-// CONSTRUCTOR DE FORMULARIOS DE MATRICES HMM - INTACTO
+// CONSTRUCTOR DE FORMULARIOS DE MATRICES HMM
 // =========================================================================
 function buildHMMModalTables() {
     const container = document.getElementById('hmmModalBody');
@@ -475,7 +475,7 @@ function saveHMMParameters() {
 }
 
 // =========================================================================
-// MÉTODOS DE PERSISTENCIA (LECTURA OPTIMIZADA DESDE TU FUNCIÓN ADAPTADA)
+// MÉTODOS DE PERSISTENCIA
 // =========================================================================
 function saveNetwork() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(nodes));
@@ -503,7 +503,7 @@ function loadNetworkFromFile(file) {
             clearGraph();
             nodes = []; 
 
-            // Inyectar nodos conservando la CPT original intacta
+            // Inyectar nodos
             uploadedNodes.forEach(n => {
                 let cleanParents = [];
                 if (n.parents && Array.isArray(n.parents)) {
